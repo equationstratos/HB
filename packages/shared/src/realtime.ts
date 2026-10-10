@@ -1,0 +1,43 @@
+import type {
+  DeviationDto,
+  LocationDto,
+  MessageDto,
+  MissionDto,
+  MissionRouteDto,
+  OfferDto,
+  SosAlertDto,
+} from './types';
+
+/** Espace de noms Socket.IO de la plateforme. */
+export const REALTIME_NAMESPACE = '/rt';
+
+/** Événements envoyés par le serveur. */
+export interface ServerToClientEvents {
+  'mission:updated': (mission: MissionDto) => void;
+  'mission:unassigned': (mission: MissionDto) => void;
+  'route:updated': (payload: { missionId: string; route: MissionRouteDto }) => void;
+  location: (location: LocationDto) => void;
+  'chat:message': (message: MessageDto) => void;
+  'offer:new': (offer: OfferDto) => void;
+  'offer:revoked': (payload: { offerId: string; missionId: string }) => void;
+  'alert:sos': (alert: SosAlertDto) => void;
+  'alert:sos-updated': (alert: SosAlertDto) => void;
+  'alert:deviation': (deviation: DeviationDto) => void;
+  'alert:deviation-updated': (deviation: DeviationDto) => void;
+  'guard:application': (payload: { userId: string }) => void;
+}
+
+/** Événements envoyés par les applis. */
+export interface ClientToServerEvents {
+  'mission:join': (
+    payload: { missionId: string },
+    ack: (res: { ok: boolean; error?: string }) => void,
+  ) => void;
+  'mission:leave': (payload: { missionId: string }) => void;
+}
+
+export const rooms = {
+  user: (userId: string) => `user:${userId}`,
+  mission: (missionId: string) => `mission:${missionId}`,
+  admins: 'admins',
+} as const;

@@ -1,0 +1,485 @@
+// Modèle de données de la plateforme.
+// Les énumérations reprennent exactement celles de @hb/shared.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  GUARD
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum GuardStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum GuardDocumentType {
+  ID_CARD
+  CNAPS_CARD
+  OTHER
+}
+
+enum MissionStatus {
+  REQUESTED
+  SEARCHING
+  ASSIGNED
+  GUARD_EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  UNASSIGNED
+}
+
+enum MissionType {
+  ONE_OFF
+  SUBSCRIPTION
+}
+
+enum TransportMode {
+  WALK
+  BIKE
+  CAR
+  TRANSIT
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum DeviationType {
+  OFF_ROUTE
+  STOPPED
+  LATE
+  SIGNAL_LOST
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// Comptes et authentification
+// ---------------------------------------------------------------------------
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  phone             String
+  passwordHash      String
+  role              Role
+  status            UserStatus @default(ACTIVE)
+  firstName         String
+  lastName          String
+  phoneVerifiedAt   DateTime?
+  /// Secret TOTP chiffré (AES-256-GCM).
+  totpSecret        String?
+  totpEnabledAt     DateTime?
+  /// Dernier pas TOTP accepté, pour refuser le rejeu d'un même code.
+  totpLastStep      Int?
+  locationConsentAt DateTime?
+  pushToken         String?
+  failedLoginCount  Int        @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  suspendedReason   String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  refreshTokens      RefreshToken[]
+  phoneVerifications PhoneVerification[]
+  emergencyContacts  EmergencyContact[]
+  guardProfile       GuardProfile?
+  clientMissions     Mission[]           @relation("ClientMissions")
+  guardMissions      Mission[]           @relation("GuardMissions")
+  subscriptions      Subscription[]
+  offers             MissionOffer[]
+  messages           Message[]
+
+  @@index([role, status])
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Tous les jetons issus d'une même connexion partagent la même famille.
+  familyId     String
+  tokenHash    String
+  /// La session a passé la double authentification.
+  mfa          Boolean   @default(false)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model PhoneVerification {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  relation  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Gardes
+// ---------------------------------------------------------------------------
+
+model GuardProfile {
+  userId          String      @id
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          GuardStatus @default(DRAFT)
+  cnapsCardNumber String?
+  bio             String?
+  baseLat         Float?
+  baseLng         Float?
+  serviceRadiusKm Float       @default(10)
+  timezone        String      @default("Europe/Paris")
+  availableNow    Boolean     @default(false)
+  lastLat         Float?
+  lastLng         Float?
+  lastLocationAt  DateTime?
+  ratingAvg       Float?
+  ratingCount     Int         @default(0)
+  ratingSum       Int         @default(0)
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  documents    GuardDocument[]
+  availability GuardAvailability[]
+
+  @@index([status, baseLat, baseLng])
+  @@index([status, lastLat, lastLng])
+}
+
+model GuardDocument {
+  id           String            @id @default(cuid())
+  guardId      String
+  guard        GuardProfile      @relation(fields: [guardId], references: [userId], onDelete: Cascade)
+  type         GuardDocumentType
+  storageKey   String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  uploadedAt   DateTime          @default(now())
+
+  @@index([guardId])
+}
+
+model GuardAvailability {
+  id          String       @id @default(cuid())
+  guardId     String
+  guard       GuardProfile @relation(fields: [guardId], references: [userId], onDelete: Cascade)
+  /// 1 = lundi … 7 = dimanche.
+  dayOfWeek   Int
+  startMinute Int
+  endMinute   Int
+
+  @@index([guardId, dayOfWeek])
+}
+
+// ---------------------------------------------------------------------------
+// Offres et abonnements (sans encaissement en v1)
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  description      String?
+  missionsPerMonth Int
+  priceCents       Int
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  clientId           String
+  client             User               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan               @relation(fields: [planId], references: [id])
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  missionsUsed       Int                @default(0)
+  createdAt          DateTime           @default(now())
+  cancelledAt        DateTime?
+
+  missions Mission[]
+
+  @@index([clientId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Missions
+// ---------------------------------------------------------------------------
+
+model Mission {
+  id               String        @id @default(cuid())
+  clientId         String
+  client           User          @relation("ClientMissions", fields: [clientId], references: [id])
+  guardId          String?
+  guard            User?         @relation("GuardMissions", fields: [guardId], references: [id])
+  status           MissionStatus @default(REQUESTED)
+  type             MissionType
+  subscriptionId   String?
+  subscription     Subscription? @relation(fields: [subscriptionId], references: [id])
+  departureAt      DateTime
+  slotEndAt        DateTime
+  codeWord         String
+  notes            String?
+  /// Échéance au-delà de laquelle la recherche de garde s'arrête.
+  searchDeadlineAt DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  assignedAt       DateTime?
+  enRouteAt        DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  cancelledById    String?
+  cancelReason     String?
+  /// État de la surveillance du trajet (voir route-monitor dans @hb/shared).
+  monitorState     Json?
+  lastClientPingAt DateTime?
+  lastGuardPingAt  DateTime?
+
+  route      MissionRoute?
+  offers     MissionOffer[]
+  pings      LocationPing[]
+  messages   Message[]
+  calls      CallSession[]
+  sosAlerts  SosAlert[]
+  deviations RouteDeviation[]
+  rating     Rating?
+
+  @@index([status, departureAt])
+  @@index([clientId, departureAt])
+  @@index([guardId, status])
+}
+
+/// Trajet surveillé, défini et validé par la cliente à la commande.
+model MissionRoute {
+  missionId         String        @id
+  mission           Mission       @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  mode              TransportMode
+  /// Départ, étapes et arrivée : [{ lat, lng, address }].
+  waypoints         Json
+  /// GeoJSON LineString.
+  geometry          Json
+  distanceMeters    Int
+  durationSeconds   Int
+  approximate       Boolean
+  provider          String
+  toleranceMeters   Int
+  expectedArrivalAt DateTime
+  version           Int           @default(1)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model MissionOffer {
+  id             String      @id @default(cuid())
+  missionId      String
+  mission        Mission     @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  guardId        String
+  guard          User        @relation(fields: [guardId], references: [id], onDelete: Cascade)
+  status         OfferStatus @default(PENDING)
+  wave           Int
+  distanceMeters Int
+  expiresAt      DateTime
+  createdAt      DateTime    @default(now())
+  respondedAt    DateTime?
+
+  @@unique([missionId, guardId])
+  @@index([guardId, status])
+  @@index([missionId, status])
+}
+
+/// Positions GPS. Supprimées 30 jours après la fin de la mission (RGPD).
+model LocationPing {
+  id         BigInt   @id @default(autoincrement())
+  missionId  String
+  mission    Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  userId     String
+  role       Role
+  lat        Float
+  lng        Float
+  accuracy   Float?
+  speed      Float?
+  heading    Float?
+  recordedAt DateTime
+  receivedAt DateTime @default(now())
+
+  @@index([missionId, userId, recordedAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  missionId String
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([missionId, createdAt])
+}
+
+model CallSession {
+  id              String    @id @default(cuid())
+  missionId       String
+  mission         Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  callerId        String
+  calleeId        String
+  provider        String
+  providerCallId  String?
+  status          String
+  createdAt       DateTime  @default(now())
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  @@index([missionId])
+}
+
+model SosAlert {
+  id               String      @id @default(cuid())
+  missionId        String
+  mission          Mission     @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  raisedById       String
+  raisedByRole     Role
+  /// Vrai si l'alerte vient d'une escalade automatique (écart sans réponse).
+  automatic        Boolean     @default(false)
+  lat              Float?
+  lng              Float?
+  message          String?
+  status           AlertStatus @default(OPEN)
+  createdAt        DateTime    @default(now())
+  acknowledgedAt   DateTime?
+  acknowledgedById String?
+  resolvedAt       DateTime?
+  resolvedById     String?
+  note             String?
+
+  @@index([status, createdAt])
+  @@index([missionId])
+}
+
+model RouteDeviation {
+  id                String        @id @default(cuid())
+  missionId         String
+  mission           Mission       @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  type              DeviationType
+  status            AlertStatus   @default(OPEN)
+  lat               Float?
+  lng               Float?
+  distanceMeters    Int?
+  /// Réponse de la cliente à « Tout va bien ? ».
+  clientConfirmedOk Boolean?
+  escalatedAt       DateTime?
+  createdAt         DateTime      @default(now())
+  acknowledgedAt    DateTime?
+  acknowledgedById  String?
+  resolvedAt        DateTime?
+  resolvedById      String?
+  note              String?
+
+  @@index([status, createdAt])
+  @@index([missionId])
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  missionId String   @unique
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  clientId  String
+  guardId   String
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([guardId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Traçabilité (Accounting)
+// ---------------------------------------------------------------------------
+
+/// Journal d'audit en ajout seul : un trigger PostgreSQL interdit UPDATE et DELETE.
+/// Pas de clé étrangère vers User pour que l'historique survive aux suppressions.
+model AuditLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  actorId    String?
+  /// CLIENT, GUARD, ADMIN ou SYSTEM.
+  actorRole  String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action])
+}

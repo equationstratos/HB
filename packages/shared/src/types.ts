@@ -1,0 +1,295 @@
+import type {
+  AlertStatus,
+  DeviationType,
+  GuardDocumentType,
+  GuardStatus,
+  MissionStatus,
+  MissionType,
+  OfferStatus,
+  Role,
+  SubscriptionStatus,
+  TransportMode,
+  UserStatus,
+} from './enums';
+import type { LineString } from './geo';
+import type { RouteWaypoint } from './routing';
+
+/** Réponses JSON de l'API. Les dates sont des chaînes ISO 8601. */
+
+export interface UserDto {
+  id: string;
+  email: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  status: UserStatus;
+  phoneVerified: boolean;
+  mfaEnabled: boolean;
+  locationConsentAt: string | null;
+  createdAt: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  /** Durée de validité du jeton d'accès, en secondes. */
+  expiresIn: number;
+}
+
+export type LoginResponse =
+  | { status: 'OK'; user: UserDto; tokens: AuthTokens }
+  | { status: 'MFA_REQUIRED'; mfaToken: string }
+  | { status: 'MFA_SETUP_REQUIRED'; mfaToken: string };
+
+export interface MfaSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+}
+
+export interface EmergencyContactDto {
+  id: string;
+  name: string;
+  phone: string;
+  relation: string | null;
+}
+
+export interface GuardDocumentDto {
+  id: string;
+  type: GuardDocumentType;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+export interface AvailabilitySlotDto {
+  dayOfWeek: number;
+  startMinute: number;
+  endMinute: number;
+}
+
+export interface GuardProfileDto {
+  userId: string;
+  status: GuardStatus;
+  cnapsCardNumber: string | null;
+  bio: string | null;
+  baseLat: number | null;
+  baseLng: number | null;
+  serviceRadiusKm: number;
+  availableNow: boolean;
+  timezone: string;
+  ratingAvg: number | null;
+  ratingCount: number;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  documents: GuardDocumentDto[];
+  availability: AvailabilitySlotDto[];
+}
+
+export interface PersonSummaryDto {
+  id: string;
+  firstName: string;
+  /** Initiale du nom uniquement, sauf pour l'admin. */
+  lastName: string;
+  ratingAvg?: number | null;
+  ratingCount?: number;
+}
+
+export interface MissionRouteDto {
+  mode: TransportMode;
+  waypoints: RouteWaypoint[];
+  geometry: LineString;
+  distanceMeters: number;
+  durationSeconds: number;
+  approximate: boolean;
+  toleranceMeters: number;
+  expectedArrivalAt: string;
+  version: number;
+}
+
+export interface RatingDto {
+  id: string;
+  missionId: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+  clientFirstName?: string;
+}
+
+export interface MissionDto {
+  id: string;
+  status: MissionStatus;
+  type: MissionType;
+  departureAt: string;
+  slotEndAt: string;
+  codeWord: string;
+  notes: string | null;
+  client: PersonSummaryDto;
+  guard: PersonSummaryDto | null;
+  route: MissionRouteDto;
+  createdAt: string;
+  assignedAt: string | null;
+  enRouteAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  rating: RatingDto | null;
+}
+
+export interface OfferDto {
+  id: string;
+  missionId: string;
+  status: OfferStatus;
+  wave: number;
+  expiresAt: string;
+  distanceToStartMeters: number;
+  mission: {
+    departureAt: string;
+    slotEndAt: string;
+    type: MissionType;
+    route: MissionRouteDto;
+    clientFirstName: string;
+  };
+}
+
+export interface LocationDto {
+  missionId: string;
+  userId: string;
+  role: Role;
+  lat: number;
+  lng: number;
+  accuracy: number | null;
+  recordedAt: string;
+}
+
+export interface MessageDto {
+  id: string;
+  missionId: string;
+  senderId: string;
+  senderRole: Role;
+  body: string;
+  createdAt: string;
+}
+
+export interface SosAlertDto {
+  id: string;
+  missionId: string;
+  raisedById: string;
+  raisedByRole: Role;
+  lat: number | null;
+  lng: number | null;
+  message: string | null;
+  status: AlertStatus;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedById: string | null;
+  resolvedAt: string | null;
+  note: string | null;
+}
+
+export interface DeviationDto {
+  id: string;
+  missionId: string;
+  type: DeviationType;
+  status: AlertStatus;
+  lat: number | null;
+  lng: number | null;
+  distanceMeters: number | null;
+  clientConfirmedOk: boolean | null;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+  note: string | null;
+}
+
+export interface CallResponseDto {
+  callId: string;
+  status: string;
+  message: string;
+}
+
+export interface PlanDto {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  missionsPerMonth: number;
+  priceCents: number;
+  active: boolean;
+}
+
+export interface SubscriptionDto {
+  id: string;
+  plan: PlanDto;
+  status: SubscriptionStatus;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  missionsUsed: number;
+  missionsRemaining: number;
+  /** Toujours faux en v1 : aucun encaissement n'est branché. */
+  paymentActive: boolean;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AuditLogDto {
+  id: string;
+  createdAt: string;
+  actorId: string | null;
+  actorRole: Role | 'SYSTEM' | null;
+  actorEmail: string | null;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export interface AdminOverviewDto {
+  activeMissions: number;
+  upcomingMissions: number;
+  unassignedMissions: number;
+  openSos: number;
+  openDeviations: number;
+  pendingGuards: number;
+  approvedGuards: number;
+  availableGuards: number;
+}
+
+export interface LiveMissionDto extends MissionDto {
+  lastClientLocation: LocationDto | null;
+  lastGuardLocation: LocationDto | null;
+  openSos: SosAlertDto[];
+  openDeviations: DeviationDto[];
+}
+
+export interface AdminGuardDto extends GuardProfileDto {
+  user: UserDto;
+}
+
+export interface AdminUserDto extends UserDto {
+  missionsCount: number;
+  guardStatus: GuardStatus | null;
+}
+
+export interface AdminAlertsDto {
+  sos: (SosAlertDto & { mission: MissionDto })[];
+  deviations: (DeviationDto & { mission: MissionDto })[];
+}
+
+export interface LowRatedGuardDto {
+  guard: PersonSummaryDto;
+  ratingAvg: number;
+  ratingCount: number;
+  recent: RatingDto[];
+}

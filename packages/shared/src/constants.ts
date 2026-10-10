@@ -1,0 +1,54 @@
+/** Prix indicatif d'une protection ponctuelle (aucun encaissement en v1). */
+export const ONE_OFF_PRICE_CENTS = 1500;
+
+/** Note moyenne sous laquelle un garde est signalé à l'admin. */
+export const LOW_RATING_THRESHOLD = 3.5;
+/** Nombre minimal de notes avant de signaler un garde. */
+export const LOW_RATING_MIN_COUNT = 3;
+
+/** Les positions GPS sont supprimées ce nombre de jours après la fin de la mission (RGPD). */
+export const LOCATION_RETENTION_DAYS = 30;
+
+/** Taille maximale d'une pièce justificative. */
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+export const ALLOWED_DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
+
+/**
+ * Mots de code : la cliente et le garde se reconnaissent sans avoir à donner leur nom.
+ */
+export const CODE_WORDS = [
+  'Lavande',
+  'Horizon',
+  'Mistral',
+  'Boussole',
+  'Cerisier',
+  'Albatros',
+  'Opale',
+  'Marelle',
+  'Lanterne',
+  'Coquelicot',
+  'Azur',
+  'Sésame',
+  'Phare',
+  'Mimosa',
+  'Galet',
+  'Comète',
+  'Ondine',
+  'Pivoine',
+  'Origami',
+  'Cascade',
+  'Vanille',
+  'Brindille',
+  'Aquarelle',
+  'Sirocco',
+] as const;
+
+/** Numéros d'urgence en France. */
+export const EMERGENCY_NUMBERS = {
+  european: '112',
+  police: '17',
+  sms: '114',
+} as const;
+
+/** Nom affiché de la plateforme (SMS, appels, écrans). À adapter à la marque définitive. */
+export const APP_NAME = 'HB';
