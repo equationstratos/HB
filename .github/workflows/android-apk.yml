@@ -103,4 +103,4 @@ jobs:
           NOTES
           gh release delete apps-test --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
           gh release create apps-test out/*.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --prerelease --title "Applis de test (Android)" --notes-file notes.md
+            --latest --title "Applis de test (Android)" --notes-file notes.md

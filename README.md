@@ -11,6 +11,18 @@ trajet est surveillé en temps réel et l'équipe de supervision garde la main �
 | `apps/admin`  | L'équipe : supervision en direct, validation des gardes, audit | React + Vite (web)        |
 | `apps/api`    | Serveur commun aux trois applis                                | NestJS, PostgreSQL, Redis |
 
+## Télécharger les applis de test (Android)
+
+|                                                                        Appli cliente (HB)                                                                         |                                                                    Appli garde (HB Garde)                                                                     |
+| :---------------------------------------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| [<img src="docs/qr/hb-client.svg" width="180" alt="QR code de l'appli cliente">](https://github.com/equationstratos/HB/releases/download/apps-test/hb-client.apk) | [<img src="docs/qr/hb-guard.svg" width="180" alt="QR code de l'appli garde">](https://github.com/equationstratos/HB/releases/download/apps-test/hb-guard.apk) |
+|                         **[Télécharger hb-client.apk](https://github.com/equationstratos/HB/releases/download/apps-test/hb-client.apk)**                          |                        **[Télécharger hb-guard.apk](https://github.com/equationstratos/HB/releases/download/apps-test/hb-guard.apk)**                         |
+
+Depuis le téléphone Android, touchez le lien de téléchargement. Depuis un ordinateur, scannez le
+QR code avec le téléphone. Ouvrez ensuite le fichier (environ 60 Mo) et autorisez l'installation.
+Pour régler le serveur et trouver les comptes de démo, voir
+[Applis de test Android](#applis-de-test-android-apk-prêtes-à-installer).
+
 ---
 
 ## Ce que fait la plateforme
@@ -110,8 +122,10 @@ Les applis cliente et garde sont compilées automatiquement par GitHub Actions
 (`.github/workflows/android-apk.yml`) et publiées sur la page
 **[Releases → Applis de test (Android)](https://github.com/equationstratos/HB/releases/tag/apps-test)** :
 
-- `hb-client.apk` : appli cliente ;
-- `hb-guard.apk` : appli garde.
+- [`hb-client.apk`](https://github.com/equationstratos/HB/releases/download/apps-test/hb-client.apk) : appli cliente ;
+- [`hb-guard.apk`](https://github.com/equationstratos/HB/releases/download/apps-test/hb-guard.apk) : appli garde.
+
+Les QR codes en haut de cette page mènent aux mêmes fichiers.
 
 1. **Lancer le serveur** sur un ordinateur : `docker compose up -d`, `pnpm run bootstrap`, `pnpm dev`.
 2. **Trouver l'adresse IP de l'ordinateur** sur le Wi-Fi :
