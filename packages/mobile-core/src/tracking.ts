@@ -4,6 +4,7 @@ import type { LocationPingInput } from '@hb/shared';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { useEffect, useRef, useState } from 'react';
+import { applyStoredServerUrl } from './server';
 import { getClient } from './session';
 
 /**
@@ -55,6 +56,8 @@ let flushing: Promise<void> | null = null;
 /** Envoie les positions en attente, par lots. */
 export function flushLocations(): Promise<void> {
   flushing ??= (async () => {
+    // Dans la tâche en arrière-plan, l'appli peut avoir été relancée sans interface.
+    await applyStoredServerUrl();
     const client = getClient();
     if (!client.accessToken) await client.restore();
     let queue = await readQueue();

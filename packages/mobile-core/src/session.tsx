@@ -23,7 +23,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = client.subscribe(setState);
-    void client.restore();
+    // L'adresse du serveur choisie dans l'appli doit être appliquée avant de reprendre la session.
+    void import('./server')
+      .then(({ applyStoredServerUrl }) => applyStoredServerUrl())
+      .finally(() => void client.restore());
     return () => {
       unsubscribe();
     };

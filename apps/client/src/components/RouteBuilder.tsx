@@ -174,7 +174,6 @@ export function RouteBuilder({
         waypoints={points}
         onPress={(p) => void onMapPress(p)}
         height={260}
-        showsUserLocation
       />
       {active >= 0 && active < slots.length && (
         <T variant="small">{t('book.tapMap', { label: labelOf(active) })}</T>

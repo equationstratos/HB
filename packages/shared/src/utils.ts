@@ -84,3 +84,18 @@ export function formatDuration(seconds: number): string {
 export function formatPrice(cents: number): string {
   return `${(cents / 100).toFixed(2).replace('.', ',').replace(',00', '')} €`;
 }
+
+/**
+ * Adresse de l'API à partir d'une saisie libre (« 192.168.1.20 », « monserveur.fr »,
+ * « https://api.fr/api »). Les adresses locales passent en HTTP sur le port 3000.
+ */
+export function normalizeServerUrl(input: string): string {
+  let url = input.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(url)) {
+    const local = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(url) || /^localhost(:\d+)?$/i.test(url);
+    url = `${local ? 'http' : 'https'}://${url}`;
+    if (local && !/:\d+$/.test(url)) url += ':3000';
+  }
+  if (!/\/api$/.test(url)) url += '/api';
+  return url;
+}

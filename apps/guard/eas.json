@@ -22,7 +22,8 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.example.fr/api"
+        "EXPO_PUBLIC_API_URL": "https://api.example.fr/api",
+        "APP_VARIANT": "production"
       }
     }
   },

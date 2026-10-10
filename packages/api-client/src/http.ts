@@ -31,6 +31,11 @@ export class Http {
     return this.options.baseUrl.replace(/\/$/, '');
   }
 
+  /** Change le serveur visé (réglage « Serveur » des applis de test). */
+  setBaseUrl(url: string): void {
+    this.options.baseUrl = url;
+  }
+
   url(path: string, query?: Query): string {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query ?? {})) {

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Row, Screen, T, useTheme } from '@hb/mobile-core';
+import { Button, currentServerUrl, Row, Screen, T, useTheme } from '@hb/mobile-core';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -58,6 +58,17 @@ export default function Welcome() {
         title={t('welcome.login')}
         variant="secondary"
         onPress={() => router.push('/login')}
+      />
+      <Button
+        title={t('server.link', {
+          host: currentServerUrl()
+            .replace(/^https?:\/\//, '')
+            .replace(/\/api$/, ''),
+        })}
+        variant="ghost"
+        small
+        icon="server-outline"
+        onPress={() => router.push('/server')}
       />
     </Screen>
   );

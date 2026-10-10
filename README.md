@@ -104,7 +104,38 @@ pnpm --filter @hb/api simulate --no-answer  # la cliente ne répond pas : escala
 SIM_CLIENT=sarah@hb.local pnpm --filter @hb/api simulate --keep  # laisse la mission en cours
 ```
 
-### Applis mobiles sur téléphone
+### Applis de test Android (APK prêtes à installer)
+
+Les applis cliente et garde sont compilées automatiquement par GitHub Actions
+(`.github/workflows/android-apk.yml`) et publiées sur la page
+**[Releases → Applis de test (Android)](https://github.com/equationstratos/HB/releases/tag/apps-test)** :
+
+- `hb-client.apk` : appli cliente ;
+- `hb-guard.apk` : appli garde.
+
+1. **Lancer le serveur** sur un ordinateur : `docker compose up -d`, `pnpm run bootstrap`, `pnpm dev`.
+2. **Trouver l'adresse IP de l'ordinateur** sur le Wi-Fi :
+   - Windows : `ipconfig` ;
+   - macOS : Réglages → Wi-Fi → Détails ;
+   - Linux : `hostname -I`.
+
+   L'adresse ressemble à `192.168.1.20`.
+
+3. **Installer l'APK** : ouvrir le lien ci-dessus depuis le téléphone Android, télécharger le fichier, puis autoriser l'installation depuis cette source.
+4. **Choisir le serveur** : sur l'écran d'accueil de l'appli, toucher « Serveur », saisir l'adresse IP, puis « Tester la connexion » et « Enregistrer ».
+
+   Le téléphone doit être sur le même Wi-Fi, et le pare-feu de l'ordinateur doit autoriser le port 3000.
+
+5. Se connecter avec un compte de démonstration, par exemple `camille@hb.local` pour l’appli cliente et `karim@hb.local` pour l’appli garde. Les codes SMS s'affichent dans la console de l'API.
+
+À savoir :
+
+- Ces APK sont des **versions de test**. Elles sont signées avec la clé de développement et acceptent un serveur en HTTP sur le réseau local, ce que la version de production interdit.
+- La carte utilise OpenStreetMap et ne demande aucune clé.
+- Pour intégrer directement l'adresse d'un serveur hébergé, renseignez la variable de dépôt `HB_API_URL` (Settings → Secrets and variables → Actions → Variables) puis relancez le workflow.
+- **iPhone** : pas d'APK possible. Une appli iOS installable demande un compte Apple Developer et une compilation EAS. En attendant, utilisez Expo Go (ci-dessous).
+
+### Applis mobiles avec Expo Go (développement)
 
 1. Installez **Expo Go** sur le téléphone, connecté au même Wi-Fi que l'ordinateur.
 2. Lancez l'appli :

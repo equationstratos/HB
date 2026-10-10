@@ -1,11 +1,11 @@
 import type { LatLng, Position } from '@hb/shared';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
-import MapView, { Marker, Polyline, type MapPressEvent } from 'react-native-maps';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { useTheme } from '../theme';
+import { DEFAULT_TILE_URL, mapHtml, type MapState } from './map-html';
 
-const PARIS = { latitude: 48.8566, longitude: 2.3522, latitudeDelta: 0.06, longitudeDelta: 0.06 };
-const toMap = (p: LatLng) => ({ latitude: p.lat, longitude: p.lng });
+const TILE_URL = process.env.EXPO_PUBLIC_TILE_URL ?? DEFAULT_TILE_URL;
 
 export interface RouteMapProps {
   /** Tracé GeoJSON du trajet. */
@@ -18,10 +18,14 @@ export interface RouteMapProps {
   alert?: LatLng | null;
   onPress?: (point: LatLng) => void;
   height?: number;
-  showsUserLocation?: boolean;
 }
 
-/** Carte du trajet surveillé : tracé, étapes, cliente et garde. */
+const point = (p: LatLng | null | undefined) => (p ? { lat: p.lat, lng: p.lng } : null);
+
+/**
+ * Carte du trajet surveillé : tracé, étapes, cliente et garde.
+ * Leaflet dans une WebView, sur fond OpenStreetMap : aucune clé Google n'est requise.
+ */
 export function RouteMap({
   line,
   waypoints = [],
@@ -30,34 +34,59 @@ export function RouteMap({
   alert,
   onPress,
   height = 280,
-  showsUserLocation,
 }: RouteMapProps) {
   const { colors, radius } = useTheme();
-  const ref = useRef<MapView>(null);
-  const coords = useMemo(
-    () => (line ?? []).map(([lng, lat]) => ({ latitude: lat, longitude: lng })),
-    [line],
+  const ref = useRef<WebView>(null);
+  const [ready, setReady] = useState(false);
+  const html = useMemo(() => mapHtml(TILE_URL), []);
+
+  // Seules des coordonnées et les couleurs du thème sont transmises à la page.
+  const state: MapState = useMemo(
+    () => ({
+      line: (line ?? []).map(([lng, lat]) => [lng, lat] as [number, number]),
+      waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
+      client: point(client),
+      guard: point(guard),
+      alert: point(alert),
+      colors: {
+        route: colors.route,
+        client: colors.client,
+        guard: colors.guard,
+        danger: colors.danger,
+        start: colors.success,
+        end: colors.primary,
+        stop: colors.warning,
+      },
+    }),
+    [line, waypoints, client, guard, alert, colors],
   );
-  const fitKey = JSON.stringify([
-    coords.length ? [coords[0], coords[coords.length - 1]] : null,
-    waypoints,
-  ]);
 
   useEffect(() => {
-    const pts = [...coords, ...waypoints.map(toMap)];
-    if (pts.length === 0) return;
-    const t = setTimeout(
-      () =>
-        ref.current?.fitToCoordinates(pts, {
-          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-          animated: true,
-        }),
-      250,
+    if (!ready) return;
+    ref.current?.injectJavaScript(
+      `window.hbUpdate && window.hbUpdate(${JSON.stringify(state)}); true;`,
     );
-    return () => clearTimeout(t);
-    // Recadrage uniquement quand le trajet change, pas à chaque position.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey]);
+  }, [ready, state]);
+
+  const onMessage = (event: WebViewMessageEvent) => {
+    try {
+      const message = JSON.parse(event.nativeEvent.data) as {
+        type: string;
+        lat?: number;
+        lng?: number;
+      };
+      if (message.type === 'ready') setReady(true);
+      if (
+        message.type === 'press' &&
+        typeof message.lat === 'number' &&
+        typeof message.lng === 'number'
+      ) {
+        onPress?.({ lat: message.lat, lng: message.lng });
+      }
+    } catch {
+      /* message inattendu : ignoré */
+    }
+  };
 
   return (
     <View
@@ -69,74 +98,20 @@ export function RouteMap({
         borderColor: colors.border,
       }}
     >
-      <MapView
+      <WebView
         ref={ref}
-        style={{ flex: 1 }}
-        initialRegion={PARIS}
-        showsUserLocation={showsUserLocation}
-        onPress={
-          onPress
-            ? (e: MapPressEvent) =>
-                onPress({
-                  lat: e.nativeEvent.coordinate.latitude,
-                  lng: e.nativeEvent.coordinate.longitude,
-                })
-            : undefined
-        }
-      >
-        {coords.length > 1 && (
-          <Polyline coordinates={coords} strokeColor={colors.route} strokeWidth={5} />
-        )}
-        {waypoints.map((w, i) => (
-          <Marker
-            key={`wp-${i}-${w.lat}-${w.lng}`}
-            coordinate={toMap(w)}
-            pinColor={
-              i === 0
-                ? colors.success
-                : i === waypoints.length - 1
-                  ? colors.primary
-                  : colors.warning
-            }
-            title={i === 0 ? 'Départ' : i === waypoints.length - 1 ? 'Arrivée' : `Étape ${i}`}
-          />
-        ))}
-        {guard && (
-          <Marker coordinate={toMap(guard)} title="Garde" anchor={{ x: 0.5, y: 0.5 }}>
-            <Dot color={colors.guard} />
-          </Marker>
-        )}
-        {client && (
-          <Marker coordinate={toMap(client)} title="Cliente" anchor={{ x: 0.5, y: 0.5 }}>
-            <Dot color={colors.client} />
-          </Marker>
-        )}
-        {alert && (
-          <Marker coordinate={toMap(alert)} title="Alerte" anchor={{ x: 0.5, y: 0.5 }}>
-            <Dot color={colors.danger} size={22} />
-          </Marker>
-        )}
-      </MapView>
+        source={{ html, baseUrl: 'https://localhost/' }}
+        originWhitelist={['*']}
+        onMessage={onMessage}
+        javaScriptEnabled
+        domStorageEnabled
+        scrollEnabled={false}
+        nestedScrollEnabled
+        setSupportMultipleWindows={false}
+        allowsLinkPreview={false}
+        style={{ flex: 1, backgroundColor: colors.surfaceMuted }}
+        accessibilityLabel="Carte du trajet"
+      />
     </View>
-  );
-}
-
-function Dot({ color, size = 18 }: { color: string; size?: number }) {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: color,
-        borderWidth: 3,
-        borderColor: '#fff',
-        shadowColor: '#000',
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        shadowOffset: { width: 0, height: 1 },
-        elevation: 4,
-      }}
-    />
   );
 }

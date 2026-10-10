@@ -56,6 +56,10 @@ export class ApiClient {
     return this.http.baseUrl;
   }
 
+  setBaseUrl(url: string): void {
+    this.http.setBaseUrl(url);
+  }
+
   /** Origine du serveur (sans /api), pour Socket.IO. */
   get origin(): string {
     return this.http.baseUrl.replace(/\/api$/, '');

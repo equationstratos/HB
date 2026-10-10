@@ -11,6 +11,19 @@ export const fr = {
     yes: 'Oui',
     no: 'Non',
   },
+  server: {
+    title: 'Serveur',
+    hint: 'Adresse de l’API utilisée par l’application. Pour un test, indiquez l’adresse IP de l’ordinateur qui fait tourner le serveur, sur le même Wi-Fi que le téléphone.',
+    label: 'Adresse du serveur',
+    resolved: 'Adresse utilisée : {{url}}',
+    test: 'Tester la connexion',
+    save: 'Enregistrer',
+    ok: 'Serveur joignable.',
+    ko: 'Serveur injoignable.',
+    koHint:
+      'Vérifiez que l’API est lancée (pnpm dev), que le téléphone est sur le même Wi-Fi et que le pare-feu autorise le port 3000.',
+    link: 'Serveur : {{host}}',
+  },
   welcome: {
     title: 'Rentrez sereine.',
     subtitle:

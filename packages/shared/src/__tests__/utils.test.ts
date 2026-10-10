@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lateMarginSeconds, slotEnd, straightLineRoute } from '../routing';
 import { createMissionSchema, registerSchema } from '../schemas';
 import {
+  normalizeServerUrl,
   formatDistance,
   formatDuration,
   isCoveredByWeeklySlots,
@@ -101,5 +102,22 @@ describe('schémas', () => {
       route: { mode: 'WALK', points: [{ lat: 48.85, lng: 2.34 }] },
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe('normalizeServerUrl', () => {
+  it('complète une adresse IP locale (HTTP, port 3000, /api)', () => {
+    expect(normalizeServerUrl('192.168.1.20')).toBe('http://192.168.1.20:3000/api');
+    expect(normalizeServerUrl(' 192.168.1.20:4000/ ')).toBe('http://192.168.1.20:4000/api');
+    expect(normalizeServerUrl('localhost')).toBe('http://localhost:3000/api');
+  });
+
+  it('passe un nom de domaine en HTTPS', () => {
+    expect(normalizeServerUrl('api.exemple.fr')).toBe('https://api.exemple.fr/api');
+  });
+
+  it('respecte une adresse complète', () => {
+    expect(normalizeServerUrl('https://api.exemple.fr/api')).toBe('https://api.exemple.fr/api');
+    expect(normalizeServerUrl('http://10.0.2.2:3000')).toBe('http://10.0.2.2:3000/api');
   });
 });

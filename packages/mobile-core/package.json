@@ -32,7 +32,7 @@
     "react": "*",
     "react-i18next": "*",
     "react-native": "*",
-    "react-native-maps": "*",
-    "react-native-safe-area-context": "*"
+    "react-native-safe-area-context": "*",
+    "react-native-webview": "*"
   }
 }
