@@ -32,7 +32,8 @@ export class NotificationsService {
         to: u.pushToken!,
         title: n.title,
         body: n.body,
-        data: n.data,
+        // L'appli s'en sert pour faire sonner les alertes même en mode discret.
+        data: { ...n.data, critical: !!n.critical },
         priority: n.critical ? ('high' as const) : ('default' as const),
         sound: 'default' as const,
         channelId: n.critical ? 'alerts' : 'default',
