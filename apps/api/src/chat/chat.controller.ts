@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { MessageInput, messageSchema } from '@hb/shared';
+import { MessageInput, MessageListQuery, messageListQuerySchema, messageSchema } from '@hb/shared';
 import { ApiZodBody } from '../common/api-zod.decorator';
 import { AuthUser, RequestMeta } from '../common/auth-user';
 import { CurrentUser } from '../common/decorators';
@@ -15,8 +15,13 @@ export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
   @Get()
-  list(@CurrentUser() user: AuthUser, @Param('id') id: string, @Meta() meta: RequestMeta) {
-    return this.chat.list(user, id, meta);
+  list(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Meta() meta: RequestMeta,
+    @Query(new ZodPipe(messageListQuerySchema)) query: MessageListQuery,
+  ) {
+    return this.chat.list(user, id, meta, query.after);
   }
 
   @Post()

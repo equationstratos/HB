@@ -8,6 +8,10 @@ export interface Notification {
   data?: Record<string, unknown>;
   /** Alerte de sécurité : priorité haute, canal « alertes ». */
   critical?: boolean;
+  /** Canal Android des notifications non critiques (« default » par défaut, « messages »). */
+  channelId?: string;
+  /** Remise immédiate même téléphone en veille (messages de la mission). */
+  urgent?: boolean;
 }
 
 /** Notifications push. Ne lève jamais d'erreur : une notification perdue ne bloque rien. */
@@ -34,9 +38,9 @@ export class NotificationsService {
         body: n.body,
         // L'appli s'en sert pour faire sonner les alertes même en mode discret.
         data: { ...n.data, critical: !!n.critical },
-        priority: n.critical ? ('high' as const) : ('default' as const),
+        priority: n.critical || n.urgent ? ('high' as const) : ('default' as const),
         sound: 'default' as const,
-        channelId: n.critical ? 'alerts' : 'default',
+        channelId: n.critical ? 'alerts' : (n.channelId ?? 'default'),
       }));
       if (messages.length > 0) await this.push.send(messages);
     } catch (error) {

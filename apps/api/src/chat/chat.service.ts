@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { Message, MissionStatus, Role } from '@prisma/client';
-import { MessageDto } from '@hb/shared';
+import { MessageDto, messageAuthorLabel } from '@hb/shared';
 import { MissionAccessService } from '../access/mission-access.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, RequestMeta } from '../common/auth-user';
@@ -32,7 +32,13 @@ export class ChatService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(user: AuthUser, missionId: string, meta: RequestMeta): Promise<MessageDto[]> {
+  /** `after` : seulement les messages postérieurs à cette date (relève des applis). */
+  async list(
+    user: AuthUser,
+    missionId: string,
+    meta: RequestMeta,
+    after?: string,
+  ): Promise<MessageDto[]> {
     await this.access.loadForViewer(missionId, user);
     if (user.role === 'ADMIN') {
       await this.audit.log({
@@ -44,7 +50,7 @@ export class ChatService {
       });
     }
     const rows = await this.prisma.message.findMany({
-      where: { missionId },
+      where: { missionId, ...(after ? { createdAt: { gt: new Date(after) } } : {}) },
       include: { sender: { select: { role: true } } },
       orderBy: { createdAt: 'asc' },
       take: 500,
@@ -64,19 +70,18 @@ export class ChatService {
       include: { sender: { select: { role: true } } },
     });
     const dto = toMessageDto(message);
+    // Salle de la mission + salles personnelles de la cliente et du garde : le message
+    // arrive dans l'appli quel que soit l'écran ouvert.
     this.realtime.toMissionAndParties(mission, 'chat:message', dto);
 
+    // Confidentialité : la notification push ne contient ni le message ni de nom.
     const recipients = [mission.clientId, mission.guardId].filter((id) => id !== user.id);
-    const from =
-      user.role === 'ADMIN'
-        ? "L'équipe"
-        : user.role === 'GUARD'
-          ? 'Votre garde'
-          : mission.client.firstName;
     await this.notifications.toUsers(recipients, {
-      title: `Message de ${from}`,
-      body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
-      data: { missionId, messageId: message.id },
+      title: 'Nouveau message',
+      body: `${messageAuthorLabel[user.role]} vous a écrit.`,
+      data: { type: 'message', missionId, messageId: message.id },
+      channelId: 'messages',
+      urgent: true,
     });
     return dto;
   }
