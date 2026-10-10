@@ -3,6 +3,7 @@ import { APP_NAME, PhoneCodeSentDto } from '@hb/shared';
 import { CryptoService } from '../common/crypto.service';
 import { AppConfig } from '../config/app-config.service';
 import { SMS_PROVIDER, SmsProvider } from '../integrations/sms.provider';
+import { TELEPHONY_PROVIDER, TelephonyProvider } from '../integrations/telephony.provider';
 import { PrismaService } from '../prisma/prisma.service';
 
 const CODE_TTL_MS = 10 * 60_000;
@@ -18,11 +19,14 @@ export class PhoneVerificationService {
     private readonly crypto: CryptoService,
     private readonly config: AppConfig,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
+    @Inject(TELEPHONY_PROVIDER) private readonly telephony: TelephonyProvider,
   ) {}
 
   /**
-   * Envoie un code par SMS. Sur un serveur de test, où aucun SMS ne part, le code est aussi
-   * renvoyé pour que l'appli l'affiche ; la production refuse les SMS simulés au démarrage.
+   * Envoie un code par SMS. Sur un serveur de test, où ni SMS ni appel ne part, le code est
+   * aussi renvoyé pour que l'appli l'affiche ; la production refuse les SMS simulés au
+   * démarrage. Avec une vraie téléphonie, un numéro jamais prouvé pourrait être appelé :
+   * le code n'est alors jamais renvoyé.
    */
   async send(userId: string): Promise<PhoneCodeSentDto> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
@@ -57,7 +61,8 @@ export class PhoneVerificationService {
       user.phone,
       `${APP_NAME} : votre code de vérification est ${code}. Il expire dans 10 minutes.`,
     );
-    const showCode = this.sms.simulated === true && !this.config.isProduction;
+    const showCode =
+      this.sms.simulated === true && this.telephony.simulated === true && !this.config.isProduction;
     return { expiresInSeconds: CODE_TTL_MS / 1000, ...(showCode ? { testCode: code } : {}) };
   }
 

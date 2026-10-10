@@ -55,6 +55,7 @@ export const fr = {
     subtitle: 'Nous avons envoyé un code par SMS au {{phone}}.',
     resend: 'Renvoyer le code',
     sent: 'Nouveau code envoyé.',
+    noSms: 'Pas de SMS reçu après une minute ? Touchez « Renvoyer le code ».',
     testTitle: 'Mode test : pas de vrai SMS',
     testMessage:
       'Ce serveur de test n’envoie pas de SMS. Votre code est {{code}}, il est déjà saisi : touchez « Continuer ».',

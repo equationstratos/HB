@@ -129,7 +129,7 @@ export function RegisterScreen({ role }: { role: 'CLIENT' | 'GUARD' }) {
         phone: normalizePhone(form.phone),
         role,
       });
-      rememberPhoneTestCode(res.user.id, res.phoneCode?.testCode);
+      rememberPhoneTestCode(res.user.id, res.phoneCode?.testCode, res.phoneCode?.expiresInSeconds);
       await getClient().handleLogin(res);
       router.replace('/');
     } catch (e) {
@@ -239,7 +239,7 @@ export function VerifyPhoneScreen() {
       const sent = await api.auth.sendPhoneCode();
       setInfo(t('verifyPhone.sent'));
       if (sent.testCode) {
-        if (user) rememberPhoneTestCode(user.id, sent.testCode);
+        if (user) rememberPhoneTestCode(user.id, sent.testCode, sent.expiresInSeconds);
         setTestCode(sent.testCode);
         setCode(sent.testCode);
       }
@@ -278,11 +278,15 @@ export function VerifyPhoneScreen() {
         loading={busy}
         disabled={code.length !== 6}
       />
+      {!testCode && <T variant="muted">{t('verifyPhone.noSms')}</T>}
       <Button title={t('verifyPhone.resend')} variant="ghost" onPress={() => void resend()} />
       <Button
         title={t('profile.logout')}
         variant="ghost"
-        onPress={() => void getClient().logout()}
+        onPress={() => {
+          if (user) rememberPhoneTestCode(user.id, undefined);
+          void getClient().logout();
+        }}
       />
     </Screen>
   );

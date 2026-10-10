@@ -20,11 +20,14 @@ export interface BridgeCallResult {
  */
 export interface TelephonyProvider {
   readonly name: string;
+  /** Vrai si aucun appel ne part réellement (développement, tests). */
+  readonly simulated?: boolean;
   bridgeCall(params: BridgeCallParams): Promise<BridgeCallResult>;
 }
 
 export class ConsoleTelephonyProvider implements TelephonyProvider {
   readonly name = 'console';
+  readonly simulated = true;
   private readonly logger = new Logger('Téléphonie');
 
   async bridgeCall({ caller, callee, reference }: BridgeCallParams): Promise<BridgeCallResult> {
@@ -35,6 +38,8 @@ export class ConsoleTelephonyProvider implements TelephonyProvider {
 
 export class MemoryTelephonyProvider implements TelephonyProvider {
   readonly name = 'memory';
+  /** Les tests le passent à faux pour simuler une vraie téléphonie. */
+  simulated = true;
   readonly calls: BridgeCallParams[] = [];
 
   async bridgeCall(params: BridgeCallParams): Promise<BridgeCallResult> {

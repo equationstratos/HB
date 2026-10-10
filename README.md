@@ -142,7 +142,7 @@ Les QR codes en haut de cette page mènent aux mêmes fichiers.
 
 5. Se connecter avec un compte de démonstration, par exemple `camille@hb.local` pour l’appli cliente et `karim@hb.local` pour l’appli garde, ou créer un compte.
 
-   Sans Twilio, aucun SMS n'est envoyé : à l'inscription, l'appli affiche le code de vérification dans un encadré « Mode test » et le saisit d'elle-même. Il apparaît aussi dans la console de l'API.
+   Sans Twilio, aucun SMS n'est envoyé : à l'inscription, l'appli affiche le code de vérification dans un encadré « Mode test » et le saisit d'elle-même. Après un redémarrage de l'appli, ou pour un compte créé avant cette version, touchez « Renvoyer le code » pour l'afficher. Il apparaît aussi dans la console de l'API.
 
 À savoir :
 

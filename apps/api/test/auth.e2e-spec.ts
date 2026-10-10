@@ -82,6 +82,12 @@ describe('AAA — authentification, autorisation, traçabilité', () => {
 
       t.sms.simulated = true;
       try {
+        // SMS simulés mais vrais appels : le numéro pourrait être appelé sans avoir été prouvé.
+        t.telephony.simulated = false;
+        const realCalls = await signUp('Lina', uniquePhone());
+        expect(realCalls.body.phoneCode).toEqual({ expiresInSeconds: 600 });
+        t.telephony.simulated = true;
+
         const phone = uniquePhone();
         const res = await signUp('Elsa', phone);
         const session = toSession(res.body);
@@ -112,6 +118,7 @@ describe('AAA — authentification, autorisation, traçabilité', () => {
         expect(me.body.phoneVerified).toBe(true);
       } finally {
         t.sms.simulated = false;
+        t.telephony.simulated = true;
       }
     });
 
