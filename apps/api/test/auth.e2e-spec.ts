@@ -61,6 +61,60 @@ describe('AAA — authentification, autorisation, traçabilité', () => {
         .expect(400);
     });
 
+    it('serveur de test sans vrais SMS : renvoie le code pour que l’appli l’affiche', async () => {
+      const signUp = (firstName: string, phone: string) =>
+        t
+          .http()
+          .post('/api/auth/register')
+          .send({
+            email: `${firstName.toLowerCase()}.${Date.now()}@exemple.fr`,
+            password: PASSWORD,
+            firstName,
+            lastName: 'Martin',
+            phone,
+            role: 'CLIENT',
+          })
+          .expect(201);
+
+      // SMS réellement envoyés : le code n'apparaît jamais dans la réponse.
+      const real = await signUp('Clara', uniquePhone());
+      expect(real.body.phoneCode).toEqual({ expiresInSeconds: 600 });
+
+      t.sms.simulated = true;
+      try {
+        const phone = uniquePhone();
+        const res = await signUp('Elsa', phone);
+        const session = toSession(res.body);
+        const testCode = res.body.phoneCode.testCode as string;
+        expect(testCode).toMatch(/^\d{6}$/);
+        expect(t.sms.lastTo(phone)).toContain(testCode);
+
+        // « Renvoyer le code » (après le délai d'une minute) renvoie aussi le nouveau code.
+        await t.prisma.phoneVerification.updateMany({
+          where: { userId: session.user.id },
+          data: { createdAt: new Date(Date.now() - 120_000) },
+        });
+        const resent = await t
+          .http()
+          .post('/api/auth/phone/send-code')
+          .set(session.auth)
+          .expect(200);
+        expect(resent.body.testCode).toMatch(/^\d{6}$/);
+        expect(t.sms.lastTo(phone)).toContain(resent.body.testCode);
+
+        await t
+          .http()
+          .post('/api/auth/phone/verify')
+          .set(session.auth)
+          .send({ code: resent.body.testCode })
+          .expect(204);
+        const me = await t.http().get('/api/me').set(session.auth).expect(200);
+        expect(me.body.phoneVerified).toBe(true);
+      } finally {
+        t.sms.simulated = false;
+      }
+    });
+
     it('exige un jeton pour les routes protégées', async () => {
       await t.http().get('/api/me').expect(401);
       await t.http().get('/api/me').set('Authorization', 'Bearer faux.jeton.jwt').expect(401);

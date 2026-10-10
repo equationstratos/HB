@@ -140,7 +140,9 @@ Les QR codes en haut de cette page mènent aux mêmes fichiers.
 
    Le téléphone doit être sur le même Wi-Fi, et le pare-feu de l'ordinateur doit autoriser le port 3000.
 
-5. Se connecter avec un compte de démonstration, par exemple `camille@hb.local` pour l’appli cliente et `karim@hb.local` pour l’appli garde. Les codes SMS s'affichent dans la console de l'API.
+5. Se connecter avec un compte de démonstration, par exemple `camille@hb.local` pour l’appli cliente et `karim@hb.local` pour l’appli garde, ou créer un compte.
+
+   Sans Twilio, aucun SMS n'est envoyé : à l'inscription, l'appli affiche le code de vérification dans un encadré « Mode test » et le saisit d'elle-même. Il apparaît aussi dans la console de l'API.
 
 À savoir :
 
@@ -161,7 +163,7 @@ Les QR codes en haut de cette page mènent aux mêmes fichiers.
 
 L'appli trouve l'API toute seule sur l'ordinateur qui sert le bundle (port 3000). Pour une autre adresse, copiez `apps/client/.env.example` en `.env` et renseignez `EXPO_PUBLIC_API_URL`.
 
-En développement, les SMS (codes de vérification, alertes) et les appels masqués s'affichent dans la console de l'API.
+En développement, les SMS (codes de vérification, alertes) et les appels masqués s'affichent dans la console de l'API. Les applis affichent aussi le code de vérification du téléphone, puisqu'aucun SMS ne part ; la production, qui exige Twilio, ne le renvoie jamais.
 
 > **Suivi en arrière-plan.** Expo Go ne permet pas le suivi GPS écran éteint : l'appli prévient alors de la garder ouverte. Pour le suivi en arrière-plan et les notifications push, installez une version de développement :
 >

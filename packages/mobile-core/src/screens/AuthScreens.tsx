@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { phoneTestCode, rememberPhoneTestCode } from '../phone-test-code';
 import { getClient, useApi, useSession } from '../session';
 import { useTheme } from '../theme';
 import { Banner, Button, Card, ErrorText, Field, Row, Screen, T } from '../ui/primitives';
@@ -128,6 +129,7 @@ export function RegisterScreen({ role }: { role: 'CLIENT' | 'GUARD' }) {
         phone: normalizePhone(form.phone),
         role,
       });
+      rememberPhoneTestCode(res.user.id, res.phoneCode?.testCode);
       await getClient().handleLogin(res);
       router.replace('/');
     } catch (e) {
@@ -209,7 +211,9 @@ export function VerifyPhoneScreen() {
   const { t } = useTranslation();
   const api = useApi();
   const { user } = useSession();
-  const [code, setCode] = useState('');
+  // Serveur de test : aucun SMS ne part, le code fourni par l'API est affiché et pré-rempli.
+  const [testCode, setTestCode] = useState(() => phoneTestCode(user?.id));
+  const [code, setCode] = useState(testCode ?? '');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -219,6 +223,7 @@ export function VerifyPhoneScreen() {
     setError(null);
     try {
       await api.auth.verifyPhone(code);
+      if (user) rememberPhoneTestCode(user.id, undefined);
       getClient().setUser(await api.me.get());
       router.replace('/');
     } catch (e) {
@@ -231,8 +236,13 @@ export function VerifyPhoneScreen() {
   const resend = async () => {
     setError(null);
     try {
-      await api.auth.sendPhoneCode();
+      const sent = await api.auth.sendPhoneCode();
       setInfo(t('verifyPhone.sent'));
+      if (sent.testCode) {
+        if (user) rememberPhoneTestCode(user.id, sent.testCode);
+        setTestCode(sent.testCode);
+        setCode(sent.testCode);
+      }
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -242,6 +252,14 @@ export function VerifyPhoneScreen() {
     <Screen>
       <T variant="title">{t('verifyPhone.title')}</T>
       <T variant="muted">{t('verifyPhone.subtitle', { phone: user?.phone ?? '' })}</T>
+      {testCode && (
+        <Banner
+          tone="warning"
+          icon="flask-outline"
+          title={t('verifyPhone.testTitle')}
+          message={t('verifyPhone.testMessage', { code: testCode })}
+        />
+      )}
       <Field
         label={t('auth.code')}
         value={code}

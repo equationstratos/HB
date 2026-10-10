@@ -14,7 +14,9 @@ import {
   phoneVerifySchema,
   RefreshInput,
   refreshSchema,
+  PhoneCodeSentDto,
   RegisterInput,
+  RegisterResponse,
   registerSchema,
 } from '@hb/shared';
 import { Request, Response } from 'express';
@@ -54,7 +56,7 @@ export class AuthController {
     @Meta() meta: RequestMeta,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResponse> {
+  ): Promise<RegisterResponse> {
     return this.withCookie(req, res, await this.auth.register(body, meta));
   }
 
@@ -149,7 +151,7 @@ export class AuthController {
   @Throttle(STRICT)
   @Post('phone/send-code')
   @HttpCode(200)
-  sendPhoneCode(@CurrentUser() user: AuthUser) {
+  sendPhoneCode(@CurrentUser() user: AuthUser): Promise<PhoneCodeSentDto> {
     return this.phone.send(user.id);
   }
 
@@ -191,7 +193,7 @@ export class AuthController {
     return req.headers['x-client'] === 'web';
   }
 
-  private withCookie(req: Request, res: Response, result: LoginResponse): LoginResponse {
+  private withCookie<R extends LoginResponse>(req: Request, res: Response, result: R): R {
     if (result.status !== 'OK') return result;
     return { ...result, tokens: this.applyCookie(req, res, result.tokens) };
   }

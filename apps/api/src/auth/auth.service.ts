@@ -8,7 +8,13 @@ import {
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { LoginInput, LoginResponse, MfaSetupResponse, RegisterInput } from '@hb/shared';
+import {
+  LoginInput,
+  LoginResponse,
+  MfaSetupResponse,
+  RegisterInput,
+  RegisterResponse,
+} from '@hb/shared';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, RequestMeta } from '../common/auth-user';
 import { CryptoService } from '../common/crypto.service';
@@ -50,7 +56,7 @@ export class AuthService implements OnModuleInit {
     return argon2.hash(password, ARGON2_OPTIONS);
   }
 
-  async register(input: RegisterInput, meta: RequestMeta): Promise<LoginResponse> {
+  async register(input: RegisterInput, meta: RequestMeta): Promise<RegisterResponse> {
     const exists = await this.prisma.user.findUnique({ where: { email: input.email } });
     if (exists) throw new ConflictException('Un compte existe déjà avec cet email');
 
@@ -72,10 +78,10 @@ export class AuthService implements OnModuleInit {
       entityId: user.id,
       meta,
     });
-    await this.phone.send(user.id).catch(() => undefined);
+    const phoneCode = await this.phone.send(user.id).catch(() => undefined);
     const tokens = await this.tokens.issueSession(user, false, meta);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-    return { status: 'OK', user: toUserDto(user), tokens };
+    return { status: 'OK', user: toUserDto(user), tokens, phoneCode };
   }
 
   async login(input: LoginInput, meta: RequestMeta): Promise<LoginResponse> {

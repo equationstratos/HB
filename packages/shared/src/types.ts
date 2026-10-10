@@ -42,6 +42,21 @@ export type LoginResponse =
   | { status: 'MFA_REQUIRED'; mfaToken: string }
   | { status: 'MFA_SETUP_REQUIRED'; mfaToken: string };
 
+/** Envoi d'un code de vérification du téléphone. */
+export interface PhoneCodeSentDto {
+  expiresInSeconds: number;
+  /**
+   * Serveur de test qui n'envoie pas de vrais SMS : le code est renvoyé pour être affiché
+   * dans l'appli. Jamais présent en production, où l'API refuse les SMS simulés.
+   */
+  testCode?: string;
+}
+
+/** Inscription : session ouverte et code de vérification du téléphone envoyé. */
+export type RegisterResponse = Extract<LoginResponse, { status: 'OK' }> & {
+  phoneCode?: PhoneCodeSentDto;
+};
+
 export interface MfaSetupResponse {
   secret: string;
   otpauthUrl: string;

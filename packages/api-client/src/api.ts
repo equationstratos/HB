@@ -30,6 +30,7 @@ import type {
   MissionStatus,
   OfferDto,
   Paginated,
+  PhoneCodeSentDto,
   PlanDto,
   PlanInput,
   PlanUpdateInput,
@@ -37,6 +38,7 @@ import type {
   RatingDto,
   RatingInput,
   RegisterInput,
+  RegisterResponse,
   RouteRequestInput,
   SosAlertDto,
   SosInput,
@@ -73,7 +75,7 @@ export function createEndpoints(http: Http) {
 
   return {
     auth: {
-      register: (input: RegisterInput) => auth<LoginResponse>('/auth/register', input),
+      register: (input: RegisterInput) => auth<RegisterResponse>('/auth/register', input),
       login: (input: LoginInput) => auth<LoginResponse>('/auth/login', input),
       mfaSetup: (mfaToken: string) => auth<MfaSetupResponse>('/auth/mfa/setup', { mfaToken }),
       mfaEnable: (mfaToken: string, code: string) =>
@@ -87,7 +89,7 @@ export function createEndpoints(http: Http) {
         ),
       logout: (refreshToken?: string) =>
         auth<void>('/auth/logout', refreshToken ? { refreshToken } : {}),
-      sendPhoneCode: () => post<{ expiresInSeconds: number }>('/auth/phone/send-code'),
+      sendPhoneCode: () => post<PhoneCodeSentDto>('/auth/phone/send-code'),
       verifyPhone: (code: string) => post<void>('/auth/phone/verify', { code }),
       selfMfaSetup: () => post<MfaSetupResponse>('/auth/me/mfa/setup'),
       selfMfaEnable: (code: string) => post<void>('/auth/me/mfa/enable', { code }),

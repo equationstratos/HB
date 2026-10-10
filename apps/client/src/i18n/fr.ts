@@ -58,6 +58,9 @@ export const fr = {
       'Nous avons envoyé un code par SMS au {{phone}}. Il sert à vous joindre en cas d’alerte.',
     resend: 'Renvoyer le code',
     sent: 'Nouveau code envoyé.',
+    testTitle: 'Mode test : pas de vrai SMS',
+    testMessage:
+      'Ce serveur de test n’envoie pas de SMS. Votre code est {{code}}, il est déjà saisi : touchez « Continuer ».',
   },
   consent: {
     title: 'Partage de votre position',

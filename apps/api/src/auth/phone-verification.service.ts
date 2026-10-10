@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { APP_NAME } from '@hb/shared';
+import { APP_NAME, PhoneCodeSentDto } from '@hb/shared';
 import { CryptoService } from '../common/crypto.service';
+import { AppConfig } from '../config/app-config.service';
 import { SMS_PROVIDER, SmsProvider } from '../integrations/sms.provider';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -15,10 +16,15 @@ export class PhoneVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly config: AppConfig,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
   ) {}
 
-  async send(userId: string): Promise<{ expiresInSeconds: number }> {
+  /**
+   * Envoie un code par SMS. Sur un serveur de test, où aucun SMS ne part, le code est aussi
+   * renvoyé pour que l'appli l'affiche ; la production refuse les SMS simulés au démarrage.
+   */
+  async send(userId: string): Promise<PhoneCodeSentDto> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const recent = await this.prisma.phoneVerification.findMany({
       where: { userId, createdAt: { gte: new Date(Date.now() - 3_600_000) } },
@@ -51,7 +57,8 @@ export class PhoneVerificationService {
       user.phone,
       `${APP_NAME} : votre code de vérification est ${code}. Il expire dans 10 minutes.`,
     );
-    return { expiresInSeconds: CODE_TTL_MS / 1000 };
+    const showCode = this.sms.simulated === true && !this.config.isProduction;
+    return { expiresInSeconds: CODE_TTL_MS / 1000, ...(showCode ? { testCode: code } : {}) };
   }
 
   async verify(userId: string, code: string): Promise<void> {

@@ -3,11 +3,14 @@ import { Logger } from '@nestjs/common';
 export const SMS_PROVIDER = Symbol('SMS_PROVIDER');
 
 export interface SmsProvider {
+  /** Vrai si aucun SMS ne part réellement (développement, tests). */
+  readonly simulated?: boolean;
   send(to: string, body: string): Promise<void>;
 }
 
 /** Développement : les SMS (dont les codes OTP) s'affichent dans la console de l'API. */
 export class ConsoleSmsProvider implements SmsProvider {
+  readonly simulated = true;
   private readonly logger = new Logger('SMS');
 
   async send(to: string, body: string): Promise<void> {
@@ -17,6 +20,8 @@ export class ConsoleSmsProvider implements SmsProvider {
 
 /** Tests : les SMS sont conservés en mémoire pour être relus. */
 export class MemorySmsProvider implements SmsProvider {
+  /** Les tests le passent à vrai pour simuler un serveur de test. */
+  simulated = false;
   readonly sent: { to: string; body: string }[] = [];
 
   async send(to: string, body: string): Promise<void> {
