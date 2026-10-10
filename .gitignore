@@ -14,3 +14,6 @@ apps/*/ios/
 *.tsbuildinfo
 web-build/
 expo-env.d.ts
+
+# Sauvegardes Redis locales
+*.rdb
