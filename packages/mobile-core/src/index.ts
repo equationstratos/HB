@@ -1,3 +1,4 @@
+export * from './chat-notifications';
 export * from './config';
 export * from './format';
 export * from './i18n';

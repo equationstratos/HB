@@ -3,6 +3,8 @@ import {
   loadDiscreetMode,
   registerForPush,
   useApi,
+  useMessageNotifications,
+  useOpenChatFromNotifications,
   useSession,
   useTheme,
 } from '@hb/mobile-core';
@@ -30,6 +32,11 @@ export default function AppLayout() {
     enabled: ready,
     refetchInterval: 60_000,
   });
+  // Nouveaux messages : notification hors de la conversation, qui s'ouvre au toucher.
+  useMessageNotifications();
+  useOpenChatFromNotifications(
+    ready && user?.role === 'GUARD' && profile.data?.status === 'APPROVED',
+  );
 
   useEffect(() => {
     if (!user) return;

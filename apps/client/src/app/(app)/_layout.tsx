@@ -1,4 +1,12 @@
-import { loadDiscreetMode, registerForPush, useApi, useSession, useTheme } from '@hb/mobile-core';
+import {
+  loadDiscreetMode,
+  registerForPush,
+  useApi,
+  useMessageNotifications,
+  useOpenChatFromNotifications,
+  useSession,
+  useTheme,
+} from '@hb/mobile-core';
 import { Redirect, Stack, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +19,11 @@ export default function AppLayout() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const page = segments[segments.length - 1];
+  // Nouveaux messages : notification hors de la conversation, qui s'ouvre au toucher.
+  useMessageNotifications();
+  useOpenChatFromNotifications(
+    user?.role === 'CLIENT' && user.phoneVerified && !!user.locationConsentAt,
+  );
 
   useEffect(() => {
     if (!user) return;
