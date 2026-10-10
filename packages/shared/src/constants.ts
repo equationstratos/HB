@@ -14,6 +14,15 @@ export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 export const ALLOWED_DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'] as const;
 
 /**
+ * Fond de carte : tuiles relayées par l'API, à l'adresse du serveur (ex. http://192.168.1.20:3000).
+ * Le fournisseur et son éventuelle clé se règlent côté serveur (MAP_TILE_URL).
+ */
+export const MAP_TILE_PATH = '/api/map/tiles/{z}/{x}/{y}.png';
+export const MAP_MAX_ZOOM = 19;
+/** Attribution par défaut : les données cartographiques viennent d'OpenStreetMap. */
+export const DEFAULT_MAP_ATTRIBUTION = '© contributeurs OpenStreetMap';
+
+/**
  * Mots de code : la cliente et le garde se reconnaissent sans avoir à donner leur nom.
  */
 export const CODE_WORDS = [

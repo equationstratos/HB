@@ -16,6 +16,7 @@ import { HealthController } from './health.controller';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { QueueModule } from './jobs/queue.module';
 import { WorkersModule } from './jobs/workers.module';
+import { MapModule } from './map/map.module';
 import { MatchingModule } from './matching/matching.module';
 import { MissionsModule } from './missions/missions.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -56,6 +57,7 @@ import { UsersModule } from './users/users.module';
     GuardProfilesModule,
     PlansModule,
     RoutingModule,
+    MapModule,
     MissionsModule,
     MatchingModule,
     TrackingModule,

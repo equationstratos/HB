@@ -227,6 +227,15 @@ export interface CallResponseDto {
   message: string;
 }
 
+/** Réglages du fond de carte. */
+export interface MapConfigDto {
+  /** Adresse des tuiles, relative au serveur ; Leaflet remplace {z}, {x} et {y}. */
+  tileUrl: string;
+  /** Texte simple, jamais interprété comme du HTML. */
+  attribution: string;
+  maxZoom: number;
+}
+
 export interface PlanDto {
   id: string;
   code: string;

@@ -147,7 +147,7 @@ Les QR codes en haut de cette page mènent aux mêmes fichiers.
 À savoir :
 
 - Ces APK sont des **versions de test**. Elles sont signées avec la clé de développement et acceptent un serveur en HTTP sur le réseau local, ce que la version de production interdit.
-- La carte utilise OpenStreetMap et ne demande aucune clé.
+- La carte ne demande aucune clé dans l'appli : les tuiles (OpenStreetMap par défaut) passent par le serveur choisi, voir [Fond de carte](#fond-de-carte).
 - Pour intégrer directement l'adresse d'un serveur hébergé, renseignez la variable de dépôt `HB_API_URL` (Settings → Secrets and variables → Actions → Variables) puis relancez le workflow.
 - **iPhone** : pas d'APK possible. Une appli iOS installable demande un compte Apple Developer et une compilation EAS. En attendant, utilisez Expo Go (ci-dessous).
 
@@ -198,6 +198,7 @@ Organisation de l'API (`apps/api/src`) :
 | `sos/`, `chat/`, `calls/`, `ratings/` | alertes, messagerie, appel masqué, notation                                                 |
 | `guard-profiles/`, `plans/`, `admin/` | candidatures des gardes, abonnements, supervision                                           |
 | `realtime/`                           | passerelle Socket.IO authentifiée, adaptateur Redis multi-instance                          |
+| `map/`                                | fond de carte : tuiles relayées et mises en cache, fournisseur réglable sur le serveur      |
 | `jobs/`                               | tâches différées : vagues d'offres, retards, escalades, perte de signal, purge RGPD         |
 | `integrations/`                       | adaptateurs SMS, téléphonie, push, stockage, itinéraires                                    |
 
@@ -212,6 +213,23 @@ Chaque service passe par un adaptateur, choisi par variable d'environnement (voi
 | Notifications push              | console        | Expo Push (`PUSH_PROVIDER=expo`)                 |
 | Itinéraires                     | lignes droites | OpenRouteService (`ors`) ou OSRM (`osrm`)        |
 | Pièces justificatives           | disque local   | stockage S3 compatible, chiffré (`s3`)           |
+| Fond de carte                   | OpenStreetMap  | fournisseur avec clé (`MAP_TILE_URL`)            |
+
+### Fond de carte
+
+Les cartes des applis et de l'admin ne contactent aucun fournisseur de tuiles : l'API les relaie (`GET /api/map/tiles/{z}/{x}/{y}.png`, route publique) et les garde en cache jusqu'à 7 jours, en mémoire sur le serveur (1 000 tuiles au plus) comme sur les téléphones. Le fournisseur et son éventuelle clé se règlent donc sur le serveur, sans recompiler les applis. Les tuiles CARTO sans clé, utilisées auparavant par les applis, portent désormais la mention « API KEY REQUIRED ».
+
+- **Par défaut** : les tuiles d'OpenStreetMap, sans clé. Elles suffisent pour les tests, mais leur [politique d'usage](https://operations.osmfoundation.org/policies/tiles/) exclut un usage intensif : l'API s'identifie auprès d'OpenStreetMap (`MAP_TILE_USER_AGENT`) et garde les tuiles en cache.
+- **En production** : un fournisseur avec clé, par exemple CARTO :
+
+  ```bash
+  MAP_TILE_URL=https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=VOTRE_CLE
+  MAP_TILE_ATTRIBUTION="© OpenStreetMap © CARTO"
+  ```
+
+  `{s}` (sous-domaines a, b ou c) et `{r}` (ignoré) sont aussi acceptés. L'attribution, en texte simple, s'affiche en bas des cartes ; `GET /api/map/config` la fournit aux applis.
+
+Une carte charge des dizaines de tuiles d'un coup : cette route a sa propre limite, 1 200 requêtes par minute et par adresse IP. Pour un essai ponctuel, `EXPO_PUBLIC_TILE_URL` (applis) et `VITE_TILE_URL` (admin) imposent une autre adresse de tuiles à la compilation.
 
 ---
 

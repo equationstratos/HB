@@ -1,10 +1,12 @@
 /**
- * Page HTML de la carte affichée dans une WebView : Leaflet + tuiles OpenStreetMap.
- * Aucune clé d'API n'est nécessaire (contrairement à Google Maps sur Android).
+ * Page HTML de la carte affichée dans une WebView : Leaflet + tuiles servies par l'API HB
+ * (OpenStreetMap par défaut). Aucune clé n'est nécessaire dans l'appli : le fournisseur de
+ * tuiles se règle sur le serveur.
  *
  * La page reçoit l'état de la carte par `window.hbUpdate(state)` et renvoie les appuis
  * sur la carte par `postMessage`. Aucun texte saisi par les utilisateurs n'y est injecté
- * en HTML : seules des coordonnées et des couleurs transitent.
+ * en HTML : seules des coordonnées, des couleurs et l'adresse des tuiles transitent, et
+ * l'attribution du fond de carte est affichée comme du texte.
  */
 
 const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist';
@@ -12,12 +14,9 @@ const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist';
 const LEAFLET_JS_SRI = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
 const LEAFLET_CSS_SRI = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
 
-/** Fond de carte par défaut : CARTO Voyager (données OpenStreetMap), sans clé. */
-export const DEFAULT_TILE_URL =
-  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const DEFAULT_ATTRIBUTION = '&copy; OpenStreetMap &copy; CARTO';
-
 export interface MapState {
+  /** Fond de carte : son adresse dépend du serveur choisi dans l'appli. */
+  tiles: { url: string; attribution: string; maxZoom: number };
   /** Tracé : [lng, lat][] (GeoJSON). */
   line: [number, number][];
   /** Départ, étapes, arrivée. */
@@ -36,7 +35,7 @@ export interface MapState {
   };
 }
 
-export function mapHtml(tileUrl = DEFAULT_TILE_URL, attribution = DEFAULT_ATTRIBUTION): string {
+export function mapHtml(): string {
   return `<!doctype html>
 <html><head>
 <meta charset="utf-8">
@@ -63,9 +62,26 @@ export function mapHtml(tileUrl = DEFAULT_TILE_URL, attribution = DEFAULT_ATTRIB
     return;
   }
   var map = L.map('map', { zoomControl: false, attributionControl: true }).setView([48.8566, 2.3522], 13);
-  L.tileLayer(${JSON.stringify(tileUrl)}, { maxZoom: 19, subdomains: 'abcd', attribution: ${JSON.stringify(attribution)} }).addTo(map);
   var layer = L.layerGroup().addTo(map);
   var fitKey = null;
+  var tiles = null;
+  var tilesKey = null;
+
+  // Leaflet affiche l'attribution en HTML : on lui passe du texte échappé.
+  function text(value) {
+    var div = document.createElement('div');
+    div.textContent = value;
+    return div.innerHTML;
+  }
+
+  // Couche recréée seulement si le serveur choisi dans l'appli (ou l'attribution) change.
+  function setTiles(t) {
+    var key = JSON.stringify(t);
+    if (!t || key === tilesKey) return;
+    tilesKey = key;
+    if (tiles) map.removeLayer(tiles);
+    tiles = L.tileLayer(t.url, { maxZoom: t.maxZoom, attribution: text(t.attribution) }).addTo(map);
+  }
 
   map.on('click', function (e) { send({ type: 'press', lat: e.latlng.lat, lng: e.latlng.lng }); });
 
@@ -77,6 +93,7 @@ export function mapHtml(tileUrl = DEFAULT_TILE_URL, attribution = DEFAULT_ATTRIB
   }
 
   window.hbUpdate = function (s) {
+    setTiles(s.tiles);
     layer.clearLayers();
     var c = s.colors;
     var line = (s.line || []).map(function (p) { return [p[1], p[0]]; });
