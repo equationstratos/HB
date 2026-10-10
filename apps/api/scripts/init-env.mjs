@@ -8,6 +8,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const target = join(root, '.env');
 if (existsSync(target)) {
   console.log('apps/api/.env existe déjà : rien à faire.');
+  // Les anciennes versions traçaient les trajets en lignes droites par défaut.
+  if (/^ROUTING_PROVIDER=straight\s*$/m.test(readFileSync(target, 'utf8'))) {
+    console.log(
+      'À noter : ROUTING_PROVIDER=straight trace les trajets à vol d’oiseau. Remplacez-le par ' +
+        'ROUTING_PROVIDER=osrm dans apps/api/.env pour suivre les rues, puis relancez l’API.',
+    );
+  }
   process.exit(0);
 }
 const env = readFileSync(join(root, '.env.example'), 'utf8')

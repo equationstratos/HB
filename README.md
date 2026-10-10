@@ -210,8 +210,15 @@ Chaque service passe par un adaptateur, choisi par variable d'environnement (voi
 | SMS (codes, contacts d'urgence) | console        | Twilio (`SMS_PROVIDER=twilio`)                   |
 | Appel masqué                    | console        | Twilio Voice, mise en relation par la plateforme |
 | Notifications push              | console        | Expo Push (`PUSH_PROVIDER=expo`)                 |
-| Itinéraires                     | lignes droites | OpenRouteService (`ors`) ou OSRM (`osrm`)        |
+| Itinéraires                     | OSRM (FOSSGIS) | OSRM auto-hébergé ou OpenRouteService (`ors`)    |
 | Pièces justificatives           | disque local   | stockage S3 compatible, chiffré (`s3`)           |
+
+**Itinéraires dans les rues.** Par défaut (`ROUTING_PROVIDER=osrm`), les trajets suivent les rues grâce au serveur OSRM public de FOSSGIS (`routing.openstreetmap.de`), sans compte ni clé, avec les profils piéton, vélo et voiture. En transports en commun, chaque tronçon d'un arrêt au suivant est tracé à pied dans les rues ; la durée est estimée à la vitesse moyenne des transports.
+
+- **L'ordinateur qui fait tourner l'API doit avoir accès à internet.** Sinon, ou si le service ne répond pas, l'API trace des lignes droites : l'appli cliente affiche « Itinéraire approximatif : le service d’itinéraires est indisponible. » et l'admin marque le tracé « approximatif ».
+- **Installation existante** : les versions précédentes écrivaient `ROUTING_PROVIDER=straight` (lignes droites, « à vol d'oiseau ») dans `apps/api/.env`. Remplacez-le par `ROUTING_PROVIDER=osrm`, puis relancez l'API ; `pnpm run bootstrap` le rappelle. Les trajets déjà enregistrés gardent leur tracé.
+- Ce serveur public est gratuit mais réservé à un **usage modéré** (politique d'usage de FOSSGIS : pas d'usage intensif, application identifiée par son User-Agent). En production, hébergez votre propre OSRM (`OSRM_URL`, où `{profile}` désigne le serveur `foot`, `bike` ou `car`) ou utilisez OpenRouteService (`ROUTING_PROVIDER=ors` et `ORS_API_KEY`).
+- `ROUTING_PROVIDER=straight` reste possible pour travailler hors ligne ; les tests l'utilisent.
 
 ---
 

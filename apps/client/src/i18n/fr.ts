@@ -101,7 +101,7 @@ export const fr = {
     transitHint:
       'En transports, ajoutez vos arrêts comme étapes : le trajet est tracé de l’un à l’autre.',
     summary: '{{distance}} · {{duration}} · arrivée vers {{eta}}',
-    approximate: 'Tracé approximatif',
+    approximate: 'Itinéraire approximatif : le service d’itinéraires est indisponible.',
     when: 'Départ',
     now: 'Maintenant',
     in30: 'Dans 30 min',
