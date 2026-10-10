@@ -99,7 +99,12 @@ describe('AAA — authentification, autorisation, traçabilité', () => {
       const rotated = first.body.tokens.refreshToken as string;
       expect(rotated).not.toBe(client.refreshToken);
 
-      // Rejeu de l'ancien jeton (vol supposé) : refus et révocation de la famille.
+      // Rejeu de l'ancien jeton bien après sa rotation (vol supposé) : refus et révocation.
+      const oldId = client.refreshToken.split('.')[0]!;
+      await t.prisma.refreshToken.update({
+        where: { id: oldId },
+        data: { revokedAt: new Date(Date.now() - 60_000) },
+      });
       await t
         .http()
         .post('/api/auth/refresh')
@@ -111,6 +116,20 @@ describe('AAA — authentification, autorisation, traçabilité', () => {
         where: { action: 'auth.refresh_reuse_detected', entityId: client.user.id },
       });
       expect(reuse).not.toBeNull();
+    });
+
+    it('tolère deux rafraîchissements simultanés du même jeton (plusieurs onglets)', async () => {
+      const client = await register(t, 'CLIENT', 'Alix');
+      const [a, b] = await Promise.all([
+        t.http().post('/api/auth/refresh').send({ refreshToken: client.refreshToken }),
+        t.http().post('/api/auth/refresh').send({ refreshToken: client.refreshToken }),
+      ]);
+      expect([a.status, b.status]).toEqual([200, 200]);
+      // La session reste valide : les deux nouveaux jetons fonctionnent.
+      const next = [a.body.tokens.refreshToken, b.body.tokens.refreshToken] as string[];
+      for (const refreshToken of next) {
+        await t.http().post('/api/auth/refresh').send({ refreshToken }).expect(200);
+      }
     });
 
     it('place le jeton de l’admin web dans un cookie httpOnly', async () => {

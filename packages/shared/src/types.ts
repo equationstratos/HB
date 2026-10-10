@@ -293,3 +293,10 @@ export interface LowRatedGuardDto {
   ratingCount: number;
   recent: RatingDto[];
 }
+
+/** Coordonnées réservées à l'équipe, pour joindre les personnes pendant une alerte. */
+export interface MissionContactsDto {
+  client: { name: string; phone: string };
+  guard: { name: string; phone: string } | null;
+  emergencyContacts: { name: string; phone: string; relation: string | null }[];
+}

@@ -59,6 +59,27 @@ export class TokenService {
     }
 
     if (existing.revokedAt) {
+      // Deux rafraîchissements simultanés (deux onglets, requêtes parallèles) : le second
+      // arrive avec le jeton que le premier vient de remplacer. Toléré quelques secondes si
+      // la session est toujours active.
+      const graceMs = this.config.get('REFRESH_REUSE_GRACE_SECONDS') * 1000;
+      if (existing.replacedById && Date.now() - existing.revokedAt.getTime() <= graceMs) {
+        const alive = await this.prisma.refreshToken.count({
+          where: { familyId: existing.familyId, revokedAt: null, expiresAt: { gt: new Date() } },
+        });
+        if (alive > 0 && existing.user.status === 'ACTIVE') {
+          const next = await this.createRefreshToken(
+            existing.userId,
+            existing.familyId,
+            existing.mfa,
+            meta,
+          );
+          return {
+            tokens: this.bundle(existing.user, existing.familyId, existing.mfa, next),
+            userId: existing.userId,
+          };
+        }
+      }
       // Réutilisation d'un jeton déjà consommé : on coupe toute la session.
       await this.revokeFamily(existing.familyId);
       await this.audit.log({
@@ -81,14 +102,21 @@ export class TokenService {
       meta,
     );
     const nextId = next.split('.')[0]!;
-    // Révocation conditionnelle : si deux requêtes arrivent en même temps, une seule gagne.
+    // Révocation conditionnelle : si deux requêtes arrivent en même temps, une seule fait la
+    // rotation ; l'autre garde le jeton qu'elle vient de créer si la rotation est toute récente.
     const { count } = await this.prisma.refreshToken.updateMany({
       where: { id: existing.id, revokedAt: null },
       data: { revokedAt: new Date(), replacedById: nextId },
     });
     if (count === 0) {
-      await this.revokeFamily(existing.familyId);
-      throw new UnauthorizedException('Session révoquée, veuillez vous reconnecter');
+      const fresh = await this.prisma.refreshToken.findUnique({ where: { id: existing.id } });
+      const graceMs = this.config.get('REFRESH_REUSE_GRACE_SECONDS') * 1000;
+      const concurrent =
+        fresh?.replacedById && fresh.revokedAt && Date.now() - fresh.revokedAt.getTime() <= graceMs;
+      if (!concurrent) {
+        await this.revokeFamily(existing.familyId);
+        throw new UnauthorizedException('Session révoquée, veuillez vous reconnecter');
+      }
     }
     return {
       tokens: this.bundle(existing.user, existing.familyId, existing.mfa, next),

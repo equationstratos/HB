@@ -6,6 +6,7 @@
  *   pnpm --filter @hb/api simulate              (la cliente répond « Tout va bien »)
  *   pnpm --filter @hb/api simulate --no-answer  (pas de réponse : escalade en SOS)
  *   pnpm --filter @hb/api simulate --keep       (laisse la mission en cours à la fin)
+ *   SIM_CLIENT=sarah@hb.local pnpm --filter @hb/api simulate   (autre cliente)
  *
  * Prérequis : API démarrée et base initialisée avec le seed.
  */
@@ -52,7 +53,7 @@ const ping = (lat: number, lng: number) => ({
 
 async function main() {
   log(`API : ${API}`);
-  const client = await login('camille@hb.local');
+  const client = await login(process.env.SIM_CLIENT ?? 'camille@hb.local');
   const guardEmails = [
     'karim@hb.local',
     'aicha@hb.local',

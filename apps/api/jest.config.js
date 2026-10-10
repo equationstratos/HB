@@ -7,6 +7,8 @@ const base = {
 
 module.exports = {
   testTimeout: 30000,
+  // Les suites e2e partagent la même base de test : jamais en parallèle.
+  maxWorkers: 1,
   projects: [
     { ...base, displayName: 'unit', rootDir: 'src', testRegex: '.*\\.spec\\.ts$' },
     {

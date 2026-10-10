@@ -94,6 +94,11 @@ export class AdminController {
     return this.missions.get(user, id);
   }
 
+  @Get('missions/:id/contacts')
+  contacts(@CurrentUser() user: AuthUser, @Param('id') id: string, @Meta() meta: RequestMeta) {
+    return this.admin.contacts(user, id, meta);
+  }
+
   /** Gardes suggérés pour une attribution manuelle. */
   @Get('missions/:id/candidates')
   async candidates(@Param('id') id: string) {

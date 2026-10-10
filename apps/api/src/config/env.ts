@@ -18,6 +18,8 @@ export const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET doit faire au moins 32 caractères'),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).default(900),
   REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
+  /** Délai pendant lequel un jeton tout juste remplacé reste accepté (onglets, requêtes simultanées). */
+  REFRESH_REUSE_GRACE_SECONDS: z.coerce.number().int().min(0).max(60).default(10),
   DATA_ENCRYPTION_KEY: z
     .string()
     .refine(

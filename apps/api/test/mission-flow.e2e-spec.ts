@@ -465,6 +465,20 @@ describe('Parcours complet d’une protection', () => {
     expect(entry.lastGuardLocation).not.toBeNull();
     expect(entry.route.version).toBe(2);
     expect(entry.client.lastName).toBe('Martin');
+
+    const contacts = await t
+      .http()
+      .get(`/api/admin/missions/${missionId}/contacts`)
+      .set(admin.auth)
+      .expect(200);
+    expect(contacts.body.client.phone).toBe(client.user.phone);
+    expect(contacts.body.emergencyContacts[0].phone).toBe('+33699887766');
+    await t.http().get(`/api/admin/missions/${missionId}/contacts`).set(guard.auth).expect(403);
+    expect(
+      await t.prisma.auditLog.count({
+        where: { action: 'mission.contacts_viewed', entityId: missionId },
+      }),
+    ).toBe(1);
   });
 
   it('termine la protection et coupe l’accès aux positions', async () => {

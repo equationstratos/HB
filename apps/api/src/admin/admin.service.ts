@@ -5,6 +5,7 @@ import {
   AdminOverviewDto,
   AdminUserDto,
   LiveMissionDto,
+  MissionContactsDto,
   Paginated,
   UserListQuery,
 } from '@hb/shared';
@@ -23,6 +24,8 @@ const LIVE_STATUSES: MissionStatus[] = ['ASSIGNED', 'GUARD_EN_ROUTE', 'IN_PROGRE
 
 @Injectable()
 export class AdminService {
+  private readonly liveViewLogged = new Map<string, number>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tracking: TrackingService,
@@ -80,12 +83,17 @@ export class AdminService {
       },
       orderBy: { departureAt: 'asc' },
     });
-    await this.audit.log({
-      actor: admin,
-      action: 'admin.live_viewed',
-      metadata: { missions: missions.length },
-      meta,
-    });
+    // La vue est rafraîchie en continu : une entrée d'audit par admin et par quart d'heure suffit.
+    const lastLogged = this.liveViewLogged.get(admin.id) ?? 0;
+    if (Date.now() - lastLogged > 15 * 60_000) {
+      this.liveViewLogged.set(admin.id, Date.now());
+      await this.audit.log({
+        actor: admin,
+        action: 'admin.live_viewed',
+        metadata: { missions: missions.length },
+        meta,
+      });
+    }
     return Promise.all(
       missions.map(async (m) => ({
         ...toMissionDto(m, 'ADMIN'),
@@ -115,6 +123,43 @@ export class AdminService {
       deviations: deviations.map((d) => ({
         ...toDeviationDto(d),
         mission: toMissionDto(d.mission, 'ADMIN'),
+      })),
+    };
+  }
+
+  /** Téléphones de la cliente, du garde et des contacts d'urgence : consultation tracée. */
+  async contacts(
+    admin: AuthUser,
+    missionId: string,
+    meta: RequestMeta,
+  ): Promise<MissionContactsDto> {
+    const mission = await this.prisma.mission.findUnique({
+      where: { id: missionId },
+      include: { client: { include: { emergencyContacts: true } }, guard: true },
+    });
+    if (!mission) throw new NotFoundException('Mission introuvable');
+    await this.audit.log({
+      actor: admin,
+      action: 'mission.contacts_viewed',
+      entityType: 'Mission',
+      entityId: missionId,
+      meta,
+    });
+    return {
+      client: {
+        name: `${mission.client.firstName} ${mission.client.lastName}`,
+        phone: mission.client.phone,
+      },
+      guard: mission.guard
+        ? {
+            name: `${mission.guard.firstName} ${mission.guard.lastName}`,
+            phone: mission.guard.phone,
+          }
+        : null,
+      emergencyContacts: mission.client.emergencyContacts.map(({ name, phone, relation }) => ({
+        name,
+        phone,
+        relation,
       })),
     };
   }
