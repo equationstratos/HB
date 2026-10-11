@@ -4,6 +4,7 @@ import type { LocationPingInput } from '@hb/shared';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { useEffect, useRef, useState } from 'react';
+import { pollMessages } from './chat-notifications';
 import { applyStoredServerUrl } from './server';
 import { getClient } from './session';
 
@@ -12,6 +13,8 @@ import { getClient } from './session';
  * - en arrière-plan quand c'est possible (development build, autorisation « Toujours ») ;
  * - au premier plan sinon (Expo Go) ;
  * - file d'attente hors-ligne : aucune position perdue dans un tunnel ou un parking.
+ * La tâche relève aussi les nouveaux messages de la mission, pour les signaler appli en
+ * arrière-plan.
  */
 
 const TASK = 'hb-location-sharing';
@@ -96,6 +99,7 @@ export function defineLocationTask(): void {
       if (!missionId) return;
       await enqueue(missionId, data.locations);
       await flushLocations();
+      await pollMessages(missionId);
     },
   );
 }
@@ -189,7 +193,10 @@ export function useLocationSharing(
       setState((s) => ({ ...s, sharing: true, background, error: null }));
     })();
 
-    const timer = setInterval(() => void flushLocations(), 15_000);
+    const timer = setInterval(() => {
+      void flushLocations();
+      void pollMessages(missionId);
+    }, 15_000);
     return () => {
       cancelled = true;
       clearInterval(timer);

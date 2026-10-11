@@ -4,6 +4,7 @@ import type { MessageDto, Role } from '@hb/shared';
 import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,13 +12,29 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { markMessagesSeen, useActiveChat } from '../chat-notifications';
 import { fmtTime } from '../format';
-import { useSocketEvent } from '../realtime';
+import { useRealtime, useSocketEvent } from '../realtime';
 import { useApi, useSession } from '../session';
 import { useTheme } from '../theme';
 import { ErrorText, T } from '../ui/primitives';
 
 const ROLE_NAME: Record<Role, string> = { CLIENT: 'Cliente', GUARD: 'Garde', ADMIN: 'Équipe' };
+
+/** Clavier affiché (événements « will » sur iOS, « did » sur Android). */
+function useKeyboardVisible(): boolean {
+  const [visible, setVisible] = useState(() => Keyboard.isVisible());
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const subs = [
+      Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () => setVisible(true)),
+      Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setVisible(false)),
+    ];
+    return () => subs.forEach((sub) => sub.remove());
+  }, []);
+  return visible;
+}
 
 /** Messagerie d'une mission, mise à jour en temps réel. */
 export function ChatView({
@@ -35,9 +52,24 @@ export function ChatView({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const list = useRef<FlatList<MessageDto>>(null);
+  const input = useRef<TextInput>(null);
+  const anchor = useRef<View>(null);
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardVisible();
+  // Position de la conversation dans la fenêtre (sous l'en-tête), pour remonter la barre de
+  // saisie exactement au-dessus du clavier.
+  const [top, setTop] = useState(0);
+  useActiveChat(missionId);
 
   useEffect(() => {
-    api.missions.messages(missionId).then(setMessages, (e: unknown) => setError(errorMessage(e)));
+    api.missions.messages(missionId).then(
+      (loaded) => {
+        setMessages(loaded);
+        // Conversation ouverte : ces messages sont lus, rien à signaler plus tard.
+        void markMessagesSeen(missionId, loaded).catch(() => undefined);
+      },
+      (e: unknown) => setError(errorMessage(e)),
+    );
   }, [api, missionId]);
 
   useSocketEvent('chat:message', (m) => {
@@ -45,9 +77,26 @@ export function ChatView({
     setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
   });
 
+  // Reconnexion du temps réel : rattrape les messages arrivés pendant la coupure.
+  const { connected } = useRealtime();
+  const wasConnected = useRef(connected);
+  useEffect(() => {
+    if (connected && !wasConnected.current) {
+      api.missions.messages(missionId).then(
+        (loaded) =>
+          setMessages((prev) => [
+            ...loaded,
+            ...prev.filter((p) => !loaded.some((l) => l.id === p.id)),
+          ]),
+        () => undefined,
+      );
+    }
+    wasConnected.current = connected;
+  }, [api, missionId, connected]);
+
   useEffect(() => {
     if (messages.length) setTimeout(() => list.current?.scrollToEnd({ animated: true }), 50);
-  }, [messages.length]);
+  }, [messages.length, keyboard]);
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -57,7 +106,8 @@ export function ChatView({
     try {
       const m = await api.missions.sendMessage(missionId, trimmed);
       setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
-      setBody('');
+      // Une réponse rapide n'efface pas le texte en cours de saisie.
+      setBody((current) => (current.trim() === trimmed ? '' : current));
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -68,14 +118,19 @@ export function ChatView({
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      // Android affiche l'appli bord à bord : le clavier ne redimensionne plus la fenêtre,
+      // la conversation remonte donc d'elle-même sur les deux plateformes.
+      behavior="padding"
+      keyboardVerticalOffset={top}
     >
+      {/* Repère du haut de la conversation dans la fenêtre, sous l'en-tête. */}
+      <View ref={anchor} onLayout={() => anchor.current?.measureInWindow((_x, y) => setTop(y))} />
       <FlatList
         ref={list}
         data={messages}
         keyExtractor={(m) => m.id}
         contentContainerStyle={{ padding: 16, gap: 8 }}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <T variant="muted" center>
             Aucun message pour l’instant.
@@ -125,17 +180,27 @@ export function ChatView({
         }}
       />
       {quickReplies.length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+          }}
+        >
           {quickReplies.map((q) => (
             <Pressable
               key={q}
               onPress={() => void send(q)}
+              disabled={sending}
               style={{
+                minHeight: 36,
+                justifyContent: 'center',
                 borderWidth: 1,
                 borderColor: colors.border,
                 borderRadius: 999,
                 paddingHorizontal: 12,
-                paddingVertical: 6,
                 backgroundColor: colors.surface,
               }}
             >
@@ -147,29 +212,41 @@ export function ChatView({
       <View style={{ paddingHorizontal: 16 }}>
         <ErrorText error={error} />
       </View>
-      <View
+      {/* Toute la barre ouvre le clavier, pas seulement le texte du champ. Clavier fermé, elle
+          reste au-dessus de la barre de navigation du téléphone. */}
+      <Pressable
+        onPress={() => input.current?.focus()}
+        accessible={false}
         style={{
           flexDirection: 'row',
-          gap: 8,
-          padding: 12,
+          alignItems: 'flex-end',
+          gap: 10,
+          paddingHorizontal: 12,
+          paddingTop: 10,
+          paddingBottom: 10 + (keyboard ? 0 : insets.bottom),
           borderTopWidth: 1,
           borderColor: colors.border,
           backgroundColor: colors.surface,
         }}
       >
         <TextInput
+          ref={input}
           value={body}
           onChangeText={setBody}
           placeholder="Votre message…"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Votre message"
           multiline
           style={{
             flex: 1,
+            minHeight: 48,
+            maxHeight: 120,
             color: colors.text,
-            fontSize: 15,
-            maxHeight: 110,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
+            fontSize: 16,
+            paddingHorizontal: 14,
+            paddingTop: 12,
+            paddingBottom: 12,
+            textAlignVertical: 'center',
             borderRadius: radius.md,
             backgroundColor: colors.surfaceMuted,
           }}
@@ -179,19 +256,20 @@ export function ChatView({
           accessibilityLabel="Envoyer"
           disabled={sending || !body.trim()}
           onPress={() => void send(body)}
+          hitSlop={6}
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
             backgroundColor: colors.primary,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: sending || !body.trim() ? 0.5 : 1,
           }}
         >
-          <Ionicons name="send" size={18} color={colors.primaryText} />
+          <Ionicons name="send" size={20} color={colors.primaryText} />
         </Pressable>
-      </View>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }

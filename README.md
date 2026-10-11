@@ -151,6 +151,24 @@ Les QR codes en haut de cette page mènent aux mêmes fichiers.
 - Pour intégrer directement l'adresse d'un serveur hébergé, renseignez la variable de dépôt `HB_API_URL` (Settings → Secrets and variables → Actions → Variables) puis relancez le workflow.
 - **iPhone** : pas d'APK possible. Une appli iOS installable demande un compte Apple Developer et une compilation EAS. En attendant, utilisez Expo Go (ci-dessous).
 
+### Notifications des messages
+
+Quand la cliente ou le garde écrit, l'autre personne est prévenue :
+
+- **appli ouverte**, quel que soit l'écran : notification dès l'arrivée du message, sauf si la conversation est déjà affichée ;
+- **appli en arrière-plan pendant une mission en cours** (garde en route ou protection en cours) : le suivi GPS garde l'appli active, et elle relève les nouveaux messages toutes les 15 s environ ;
+- toucher la notification ouvre la conversation. En mode discret, elle n'affiche ni l'auteur ni le texte et ne sonne pas.
+
+Dans les APK de test, ces notifications sont **locales** : c'est l'appli qui les crée. Autorisez les notifications au premier lancement (Android 13 et plus le demandent). L'API envoie aussi une notification push, sans le texte du message (« Nouveau message — Votre garde vous a écrit. »), mais elle n'arrive que dans une appli compilée avec un projet EAS et Firebase.
+
+Pour être prévenu **appli complètement fermée**, il faut ces notifications push :
+
+1. Lier chaque appli à un projet EAS (compte Expo gratuit) : `cd apps/client && npx eas-cli@latest init`, puis la même chose dans `apps/guard`. Le `projectId` ajouté à `app.json` (`extra.eas.projectId`) permet à l'appli d'obtenir son jeton push.
+2. Créer un projet Firebase avec deux applis Android, `fr.hb.client` et `fr.hb.guard`. Placer leurs fichiers `google-services.json` dans `apps/client` et `apps/guard`, et les déclarer dans `app.json` : `"android": { "googleServicesFile": "./google-services.json" }`. Pour le workflow GitHub, versionnez ces fichiers ou recréez-les depuis un secret.
+3. Dans Firebase (Paramètres du projet → Comptes de service), générer une clé de compte de service et la confier à EAS : `npx eas-cli@latest credentials` → Android → Google Service Account → « Push Notifications (FCM V1) ».
+4. Recompiler les APK.
+5. Côté API, dans `apps/api/.env` : `PUSH_PROVIDER=expo`, et `EXPO_ACCESS_TOKEN` si l'accès sécurisé aux push est activé sur le compte Expo.
+
 ### Applis mobiles avec Expo Go (développement)
 
 1. Installez **Expo Go** sur le téléphone, connecté au même Wi-Fi que l'ordinateur.

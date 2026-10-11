@@ -144,6 +144,12 @@ export const messageSchema = z.object({
 });
 export type MessageInput = z.infer<typeof messageSchema>;
 
+/** `after` : seulement les messages postérieurs (relève périodique des applis). */
+export const messageListQuerySchema = z.object({
+  after: isoDateTime.optional(),
+});
+export type MessageListQuery = z.infer<typeof messageListQuerySchema>;
+
 export const sosSchema = z.object({
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),

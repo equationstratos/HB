@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "fr.hb.guard",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#16122B"
