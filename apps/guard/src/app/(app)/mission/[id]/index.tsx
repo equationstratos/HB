@@ -49,6 +49,8 @@ export default function GuardMission() {
   const [notice, setNotice] = useState<string | null>(null);
   const m = live.mission;
   const tracking = m?.status === 'GUARD_EN_ROUTE' || m?.status === 'IN_PROGRESS';
+  // Mission passée : le serveur n'envoie plus que les horaires (discrétion de la cliente).
+  const ended = m?.status === 'COMPLETED' || m?.status === 'CANCELLED';
   const sharing = useLocationSharing(id, tracking, {
     title: t('mission.sharing'),
     body: t('mission.sharingBody'),
@@ -160,64 +162,68 @@ export default function GuardMission() {
 
       <MissionSteps status={m.status} />
 
-      <Card>
-        <Row>
-          <View style={{ flex: 1 }}>
-            {m.client.firstName ? (
-              <>
-                <T variant="small">{t('mission.client')}</T>
-                <T variant="heading">{m.client.firstName}</T>
-              </>
-            ) : null}
-          </View>
-          <View
-            style={{
-              backgroundColor: colors.primarySoft,
-              borderRadius: 12,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              alignItems: 'center',
-            }}
-          >
-            <T variant="small">{t('mission.codeWord')}</T>
-            <T variant="heading" style={{ color: colors.primary }}>
-              {m.codeWord}
-            </T>
-          </View>
-        </Row>
-        <T variant="small">{t('mission.codeWordHint')}</T>
-        {m.notes && <T variant="muted">{t('mission.notes', { notes: m.notes })}</T>}
-        {m.status !== 'COMPLETED' && m.status !== 'CANCELLED' && (
-          <Row gap={8}>
-            <Button
-              title={t('mission.message')}
-              icon="chatbubble-ellipses"
-              variant="secondary"
-              style={{ flex: 1 }}
-              onPress={() => router.push(`/mission/${id}/chat`)}
-            />
-            <Button
-              title={t('mission.call')}
-              icon="call"
-              variant="secondary"
-              style={{ flex: 1 }}
-              loading={busy === 'call'}
-              onPress={() =>
-                void run('call', async () => setNotice((await api.missions.call(id)).message))
-              }
-            />
+      {!ended && (
+        <Card>
+          <Row>
+            <View style={{ flex: 1 }}>
+              {m.client.firstName ? (
+                <>
+                  <T variant="small">{t('mission.client')}</T>
+                  <T variant="heading">{m.client.firstName}</T>
+                </>
+              ) : null}
+            </View>
+            <View
+              style={{
+                backgroundColor: colors.primarySoft,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                alignItems: 'center',
+              }}
+            >
+              <T variant="small">{t('mission.codeWord')}</T>
+              <T variant="heading" style={{ color: colors.primary }}>
+                {m.codeWord}
+              </T>
+            </View>
           </Row>
-        )}
-      </Card>
+          <T variant="small">{t('mission.codeWordHint')}</T>
+          {m.notes && <T variant="muted">{t('mission.notes', { notes: m.notes })}</T>}
+          {m.status !== 'COMPLETED' && m.status !== 'CANCELLED' && (
+            <Row gap={8}>
+              <Button
+                title={t('mission.message')}
+                icon="chatbubble-ellipses"
+                variant="secondary"
+                style={{ flex: 1 }}
+                onPress={() => router.push(`/mission/${id}/chat`)}
+              />
+              <Button
+                title={t('mission.call')}
+                icon="call"
+                variant="secondary"
+                style={{ flex: 1 }}
+                loading={busy === 'call'}
+                onPress={() =>
+                  void run('call', async () => setNotice((await api.missions.call(id)).message))
+                }
+              />
+            </Row>
+          )}
+        </Card>
+      )}
 
-      <RouteMap
-        line={m.route.geometry.coordinates}
-        waypoints={m.route.waypoints}
-        client={live.client}
-        guard={me}
-        alert={lastAlert}
-        height={320}
-      />
+      {!ended && (
+        <RouteMap
+          line={m.route.geometry.coordinates}
+          waypoints={m.route.waypoints}
+          client={live.client}
+          guard={me}
+          alert={lastAlert}
+          height={320}
+        />
+      )}
       <Card>
         <T variant="label">
           {fmtDateTime(m.departureAt)} · {transportModeLabel[m.route.mode]} ·{' '}
@@ -265,6 +271,9 @@ export default function GuardMission() {
       )}
       {m.status === 'COMPLETED' && (
         <Banner tone="success" icon="checkmark-circle" title={t('mission.completed')} />
+      )}
+      {m.status === 'CANCELLED' && (
+        <Banner tone="neutral" icon="close-circle" title={t('mission.cancelled')} />
       )}
       {SOS_STATUSES.includes(m.status) && (
         <SosButton

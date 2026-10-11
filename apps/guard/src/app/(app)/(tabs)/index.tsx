@@ -5,6 +5,7 @@ import {
   currentPosition,
   ErrorText,
   Row,
+  ServerUpdateBanner,
   T,
   useApi,
   useSocketEvent,
@@ -109,6 +110,8 @@ export default function Missions() {
           />
         }
       >
+        <ServerUpdateBanner />
+
         <Card onPress={() => router.push('/wallet')}>
           <Row>
             <Ionicons name="wallet-outline" size={24} color={colors.primary} />

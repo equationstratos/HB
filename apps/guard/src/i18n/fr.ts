@@ -18,6 +18,9 @@ export const fr = {
     save: 'Enregistrer',
     ok: 'Serveur joignable.',
     ko: 'Serveur injoignable.',
+    outdatedTitle: 'Serveur à mettre à jour',
+    outdatedMessage:
+      'Le serveur HB n’est pas à jour pour cette version de l’appli : la carte, les trajets ou les gains peuvent ne pas fonctionner. Sur l’ordinateur du serveur : git pull, puis pnpm run update:server, puis pnpm dev.',
     koHint:
       'Vérifiez que l’API est lancée (pnpm dev), que le téléphone est sur le même Wi-Fi et que le pare-feu autorise le port 3000.',
     link: 'Serveur : {{host}}',
@@ -100,7 +103,18 @@ export const fr = {
     refresh: 'Actualiser',
     logout: 'Se déconnecter',
   },
-  tabs: { missions: 'Missions', wallet: 'Gains', planning: 'Disponibilités', profile: 'Profil' },
+  tabs: {
+    missions: 'Missions',
+    history: 'Trajets',
+    wallet: 'Gains',
+    planning: 'Disponibilités',
+    profile: 'Profil',
+  },
+  history: {
+    title: 'Mes trajets',
+    subtitle: 'Vos missions passées : horaires seulement, pour la discrétion des clientes.',
+    empty: 'Aucun trajet terminé pour l’instant.',
+  },
   home: {
     available: 'Disponible maintenant',
     availableOn: 'Vous recevez les missions immédiates autour de vous.',
@@ -148,6 +162,7 @@ export const fr = {
     routeChanged: 'La cliente a modifié son trajet.',
     sosSent: 'Alerte envoyée à l’équipe de supervision.',
     completed: 'Mission terminée. Merci !',
+    cancelled: 'Mission annulée.',
     chatTitle: 'Messagerie',
   },
   availability: {

@@ -175,6 +175,14 @@ describe('Confidentialité côté garde : ni note, ni nom de la cliente', () => 
     expect(detail.body.client).toEqual({ id: client.user.id });
     expectNothingAboutClient(detail.body);
 
+    // Trajet passé : les horaires seulement, ni adresses, ni tracé, ni mot de code.
+    const past = detail.body as GuardMissionDto;
+    expect(past.route.waypoints).toEqual([]);
+    expect(past.route.geometry.coordinates).toEqual([]);
+    expect(past.codeWord).toBe('');
+    expect(past.startedAt).not.toBeNull();
+    expect(past.completedAt).not.toBeNull();
+
     const history = await t
       .http()
       .get('/api/missions')
@@ -183,6 +191,11 @@ describe('Confidentialité côté garde : ni note, ni nom de la cliente', () => 
       .expect(200);
     expect(history.body.items).toHaveLength(1);
     expectNothingAboutClient(history.body);
+    expect(JSON.stringify(history.body)).not.toContain(ROUTE_POINTS[0]!.address);
+
+    // La cliente garde son trajet complet.
+    const mine = await t.http().get(`/api/missions/${missionId}`).set(client.auth).expect(200);
+    expect((mine.body as MissionDto).route.waypoints).toHaveLength(ROUTE_POINTS.length);
   });
 
   it('interdit au garde de lire ses notes et sa moyenne', async () => {

@@ -25,6 +25,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="history"
+        options={{
+          title: t('tabs.history'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="time-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="wallet"
         options={{
           title: t('tabs.wallet'),

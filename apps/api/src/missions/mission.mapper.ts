@@ -5,6 +5,7 @@ import {
   LineString,
   MissionDto,
   MissionRouteDto,
+  OPEN_MISSION_STATUSES,
   PersonSummaryDto,
   RouteWaypoint,
 } from '@hb/shared';
@@ -75,8 +76,23 @@ export function toGuardMissionDto(
   scope: 'list' | 'detail',
 ): GuardMissionDto {
   const showFirstName = scope === 'detail' && GUARD_BUSY_STATUSES.includes(m.status);
+  const base = missionBase(m);
   return {
-    ...missionBase(m),
+    ...base,
+    // Mission passée : ni adresses, ni tracé, ni mot de code, ni note ou motif de la cliente.
+    // Le garde garde seulement les horaires, le mode de déplacement et la distance.
+    ...(OPEN_MISSION_STATUSES.includes(m.status)
+      ? {}
+      : {
+          codeWord: '',
+          notes: null,
+          cancelReason: null,
+          route: {
+            ...base.route,
+            waypoints: [],
+            geometry: { type: 'LineString' as const, coordinates: [] },
+          },
+        }),
     client: { id: m.client.id, ...(showFirstName ? { firstName: m.client.firstName } : {}) },
     guard: m.guard ? person(m.guard, 'GUARD') : null,
   };
