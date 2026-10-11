@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  Banknote,
   CalendarClock,
   CreditCard,
   LayoutDashboard,
@@ -27,6 +28,12 @@ export function Layout() {
     queryFn: api.admin.overview,
     refetchInterval: 30_000,
   });
+  // Demandes de virement à traiter, rafraîchies aussi par le temps réel.
+  const payouts = useQuery({
+    queryKey: ['payouts', 'pending-count'],
+    queryFn: () => api.admin.payouts({ status: ['REQUESTED'], pageSize: 1 }),
+    refetchInterval: 60_000,
+  });
   const o = overview.data;
   const alerts = (o?.openSos ?? 0) + (o?.openDeviations ?? 0);
 
@@ -42,6 +49,7 @@ export function Layout() {
     { to: '/users', label: 'Utilisateurs', icon: Users },
     { to: '/ratings', label: 'Notes', icon: Star },
     { to: '/plans', label: 'Formules', icon: CreditCard },
+    { to: '/payouts', label: 'Virements', icon: Banknote, count: payouts.data?.total ?? 0 },
     { to: '/audit', label: 'Journal d’audit', icon: ScrollText },
   ];
 

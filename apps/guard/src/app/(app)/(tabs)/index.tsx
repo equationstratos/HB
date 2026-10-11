@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@hb/api-client';
 import {
   Card,
@@ -9,8 +10,9 @@ import {
   useSocketEvent,
   useTheme,
 } from '@hb/mobile-core';
-import { GUARD_BUSY_STATUSES, type OfferDto } from '@hb/shared';
+import { formatPrice, GUARD_BUSY_STATUSES, type OfferDto } from '@hb/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, Switch, View } from 'react-native';
@@ -30,6 +32,7 @@ export default function Missions() {
     queryKey: ['missions', 'mine'],
     queryFn: () => api.missions.list({ status: [...GUARD_BUSY_STATUSES], pageSize: 20 }),
   });
+  const wallet = useQuery({ queryKey: ['guard', 'wallet'], queryFn: () => api.guards.wallet() });
   const [available, setAvailable] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +62,12 @@ export default function Missions() {
       list.filter((o) => o.id !== offerId),
     );
   });
-  useSocketEvent('mission:updated', () => void missions.refetch());
+  useSocketEvent('mission:updated', (m) => {
+    void missions.refetch();
+    // Une mission terminée crédite le solde.
+    if (m.status === 'COMPLETED') void wallet.refetch();
+  });
+  useSocketEvent('payout:updated', () => void wallet.refetch());
 
   const toggle = async (value: boolean) => {
     setAvailable(value);
@@ -95,10 +103,22 @@ export default function Missions() {
             onRefresh={() => {
               void offers.refetch();
               void missions.refetch();
+              void wallet.refetch();
             }}
           />
         }
       >
+        <Card onPress={() => router.push('/wallet')}>
+          <Row>
+            <Ionicons name="wallet-outline" size={24} color={colors.primary} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <T variant="muted">{t('wallet.available')}</T>
+              <T variant="heading">{wallet.data ? formatPrice(wallet.data.availableCents) : '—'}</T>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Row>
+        </Card>
+
         <Card
           style={{
             borderColor: available ? colors.success : colors.border,

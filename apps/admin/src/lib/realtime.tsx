@@ -1,5 +1,5 @@
 import { connectRealtime, type RealtimeSocket } from '@hb/api-client';
-import { deviationTypeLabel, type LocationDto } from '@hb/shared';
+import { deviationTypeLabel, formatPrice, type LocationDto } from '@hb/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
@@ -113,6 +113,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         body: 'Une candidature attend votre validation.',
       });
       invalidate('guards', 'overview');
+    });
+    s.on('payout:requested', (p) => {
+      toast({
+        tone: 'info',
+        title: 'Demande de virement',
+        body: `${fullName(p.guard)} demande le virement de ${formatPrice(p.amountCents)}.`,
+      });
+      invalidate('payouts');
     });
 
     return () => {

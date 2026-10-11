@@ -8,6 +8,7 @@ import { LivePage } from './pages/LivePage';
 import { LoginPage } from './pages/LoginPage';
 import { MissionDetailPage } from './pages/MissionDetailPage';
 import { MissionsPage } from './pages/MissionsPage';
+import { PayoutsPage } from './pages/PayoutsPage';
 import { PlansPage } from './pages/PlansPage';
 import { RatingsPage } from './pages/RatingsPage';
 import { UsersPage } from './pages/UsersPage';
@@ -31,6 +32,7 @@ export function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="ratings" element={<RatingsPage />} />
           <Route path="plans" element={<PlansPage />} />
+          <Route path="payouts" element={<PayoutsPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

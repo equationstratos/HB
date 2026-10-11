@@ -25,6 +25,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="wallet"
+        options={{
+          title: t('tabs.wallet'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="availability"
         options={{
           title: t('tabs.planning'),
