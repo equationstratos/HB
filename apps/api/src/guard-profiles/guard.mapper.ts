@@ -1,6 +1,7 @@
-import { GuardAvailability, GuardDocument, GuardProfile, Prisma } from '@prisma/client';
-import { GuardProfileDto } from '@hb/shared';
+import { GuardAvailability, GuardDocument, GuardProfile, Prisma, User } from '@prisma/client';
+import { AdminGuardDto, GuardProfileDto } from '@hb/shared';
 import { iso } from '../common/iso';
+import { toUserDto } from '../users/user.mapper';
 
 export type GuardProfileWithRelations = GuardProfile & {
   documents: GuardDocument[];
@@ -12,6 +13,7 @@ export const guardProfileInclude = {
   availability: { orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }] },
 } satisfies Prisma.GuardProfileInclude;
 
+/** Profil renvoyé au garde lui-même : sa note moyenne reste réservée à l'équipe. */
 export function toGuardProfileDto(p: GuardProfileWithRelations): GuardProfileDto {
   return {
     userId: p.userId,
@@ -23,8 +25,6 @@ export function toGuardProfileDto(p: GuardProfileWithRelations): GuardProfileDto
     serviceRadiusKm: p.serviceRadiusKm,
     availableNow: p.availableNow,
     timezone: p.timezone,
-    ratingAvg: p.ratingAvg,
-    ratingCount: p.ratingCount,
     rejectionReason: p.rejectionReason,
     submittedAt: iso(p.submittedAt),
     approvedAt: iso(p.approvedAt),
@@ -41,5 +41,15 @@ export function toGuardProfileDto(p: GuardProfileWithRelations): GuardProfileDto
       startMinute,
       endMinute,
     })),
+  };
+}
+
+/** Vue admin : profil, compte et note moyenne. */
+export function toAdminGuardDto(p: GuardProfileWithRelations & { user: User }): AdminGuardDto {
+  return {
+    ...toGuardProfileDto(p),
+    user: toUserDto(p.user),
+    ratingAvg: p.ratingAvg,
+    ratingCount: p.ratingCount,
   };
 }

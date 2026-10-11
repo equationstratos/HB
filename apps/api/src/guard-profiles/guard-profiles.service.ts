@@ -16,7 +16,6 @@ import {
   MAX_DOCUMENT_BYTES,
   Paginated,
   PresenceInput,
-  RatingDto,
 } from '@hb/shared';
 import { randomUUID } from 'crypto';
 import { AuditService } from '../audit/audit.service';
@@ -26,8 +25,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { TokenService } from '../auth/token.service';
-import { toUserDto } from '../users/user.mapper';
-import { guardProfileInclude, toGuardProfileDto } from './guard.mapper';
+import { guardProfileInclude, toAdminGuardDto, toGuardProfileDto } from './guard.mapper';
 
 export interface UploadedDocument {
   buffer: Buffer;
@@ -211,23 +209,6 @@ export class GuardProfilesService {
     return toGuardProfileDto(updated);
   }
 
-  async myRatings(userId: string): Promise<RatingDto[]> {
-    const ratings = await this.prisma.rating.findMany({
-      where: { guardId: userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: { mission: { select: { client: { select: { firstName: true } } } } },
-    });
-    return ratings.map((r) => ({
-      id: r.id,
-      missionId: r.missionId,
-      score: r.score,
-      comment: r.comment,
-      createdAt: r.createdAt.toISOString(),
-      clientFirstName: r.mission.client.firstName,
-    }));
-  }
-
   // ---------------------------------------------------------------- Admin
 
   async list(query: GuardListQuery): Promise<Paginated<AdminGuardDto>> {
@@ -257,7 +238,7 @@ export class GuardProfilesService {
       total,
       page: query.page,
       pageSize: query.pageSize,
-      items: rows.map((r) => ({ ...toGuardProfileDto(r), user: toUserDto(r.user) })),
+      items: rows.map(toAdminGuardDto),
     };
   }
 
@@ -267,7 +248,7 @@ export class GuardProfilesService {
       include: { ...guardProfileInclude, user: true },
     });
     if (!profile) throw new NotFoundException('Garde introuvable');
-    return { ...toGuardProfileDto(profile), user: toUserDto(profile.user) };
+    return toAdminGuardDto(profile);
   }
 
   async approve(admin: AuthUser, userId: string, meta: RequestMeta): Promise<AdminGuardDto> {

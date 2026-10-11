@@ -86,6 +86,7 @@ export interface AvailabilitySlotDto {
   endMinute: number;
 }
 
+/** Profil du garde tel qu'il le voit : sans sa note, que seule l'équipe consulte. */
 export interface GuardProfileDto {
   userId: string;
   status: GuardStatus;
@@ -96,8 +97,6 @@ export interface GuardProfileDto {
   serviceRadiusKm: number;
   availableNow: boolean;
   timezone: string;
-  ratingAvg: number | null;
-  ratingCount: number;
   rejectionReason: string | null;
   submittedAt: string | null;
   approvedAt: string | null;
@@ -132,7 +131,6 @@ export interface RatingDto {
   score: number;
   comment: string | null;
   createdAt: string;
-  clientFirstName?: string;
 }
 
 export interface MissionDto {
@@ -156,6 +154,23 @@ export interface MissionDto {
   rating: RatingDto | null;
 }
 
+/**
+ * La cliente vue par son garde : jamais de nom de famille. Le prénom n'est transmis que pour
+ * la mission active (attribuée, garde en route, suivi en cours) consultée seule, afin de
+ * l'aborder avec le mot de code ; jamais dans les listes, les propositions ni l'historique.
+ */
+export interface ClientForGuardDto {
+  id: string;
+  firstName?: string;
+}
+
+/** Mission vue par le garde : identité minimale de la cliente et aucune note. */
+export interface GuardMissionDto extends Omit<MissionDto, 'client' | 'guard' | 'rating'> {
+  client: ClientForGuardDto;
+  guard: Omit<PersonSummaryDto, 'ratingAvg' | 'ratingCount'> | null;
+}
+
+/** Proposition faite à un garde : rien sur l'identité de la cliente avant l'acceptation. */
 export interface OfferDto {
   id: string;
   missionId: string;
@@ -168,7 +183,6 @@ export interface OfferDto {
     slotEndAt: string;
     type: MissionType;
     route: MissionRouteDto;
-    clientFirstName: string;
   };
 }
 
@@ -300,6 +314,8 @@ export interface LiveMissionDto extends MissionDto {
 
 export interface AdminGuardDto extends GuardProfileDto {
   user: UserDto;
+  ratingAvg: number | null;
+  ratingCount: number;
 }
 
 export interface AdminUserDto extends UserDto {

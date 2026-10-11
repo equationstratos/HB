@@ -13,6 +13,7 @@ import {
   canTransition,
   expectedArrival,
   GUARD_BUSY_STATUSES,
+  GuardMissionDto,
   INITIAL_MONITOR_STATE,
   lateMarginSeconds,
   MissionDto,
@@ -41,7 +42,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RoutingService } from '../routing/routing.service';
 import { WalletService } from '../wallet/wallet.service';
-import { toMissionDto, toRouteDto, Viewer } from './mission.mapper';
+import { toMissionDto, toMissionView, toRouteDto } from './mission.mapper';
 
 /** En dessous de ce délai, une réservation est traitée comme « maintenant ». */
 const IMMEDIATE_WINDOW_MS = 30 * 60_000;
@@ -157,7 +158,10 @@ export class MissionsService {
     return toMissionDto(mission, 'CLIENT');
   }
 
-  async list(user: AuthUser, query: MissionListQuery): Promise<Paginated<MissionDto>> {
+  async list(
+    user: AuthUser,
+    query: MissionListQuery,
+  ): Promise<Paginated<MissionDto | GuardMissionDto>> {
     const where: Prisma.MissionWhereInput = {
       ...(user.role === 'CLIENT' ? { clientId: user.id } : {}),
       ...(user.role === 'GUARD' ? { guardId: user.id } : {}),
@@ -184,12 +188,12 @@ export class MissionsService {
       total,
       page: query.page,
       pageSize: query.pageSize,
-      items: rows.map((m) => toMissionDto(m, user.role as Viewer)),
+      items: rows.map((m) => toMissionView(m, user.role, 'list')),
     };
   }
 
-  async get(user: AuthUser, id: string): Promise<MissionDto> {
-    return toMissionDto(await this.access.loadForViewer(id, user), user.role as Viewer);
+  async get(user: AuthUser, id: string): Promise<MissionDto | GuardMissionDto> {
+    return toMissionView(await this.access.loadForViewer(id, user), user.role);
   }
 
   /** Progression de la mission par le garde (en route, suivi commencé) ou la fin du trajet. */
@@ -198,7 +202,7 @@ export class MissionsService {
     id: string,
     next: MissionStatus,
     meta: RequestMeta,
-  ): Promise<MissionDto> {
+  ): Promise<MissionDto | GuardMissionDto> {
     const mission = await this.access.loadForParty(id, user);
     if (!canTransition(mission.status, next, user.role)) {
       if (transitionExists(mission.status, next)) {
@@ -271,7 +275,7 @@ export class MissionsService {
         data: { missionId: id },
       });
     }
-    return toMissionDto(updated, user.role as Viewer);
+    return toMissionView(updated, user.role);
   }
 
   async cancel(
@@ -279,7 +283,7 @@ export class MissionsService {
     id: string,
     reason: string | undefined,
     meta: RequestMeta,
-  ): Promise<MissionDto> {
+  ): Promise<MissionDto | GuardMissionDto> {
     const mission =
       user.role === 'ADMIN' ? await this.access.load(id) : await this.access.loadForParty(id, user);
     if (!canTransition(mission.status, 'CANCELLED', user.role)) {
@@ -314,7 +318,7 @@ export class MissionsService {
       body: reason ? `Motif : ${reason}` : 'La protection a été annulée.',
       data: { missionId: id },
     });
-    return toMissionDto(updated, user.role as Viewer);
+    return toMissionView(updated, user.role);
   }
 
   /** La cliente modifie son trajet (avant ou pendant la protection). */

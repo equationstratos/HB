@@ -144,7 +144,8 @@ describe('Parcours complet d’une protection', () => {
     const offer = await offerPromise;
     expect(offer.missionId).toBe(missionId);
     expect(offer.mission.route.geometry.coordinates.length).toBeGreaterThanOrEqual(2);
-    expect(offer.mission.clientFirstName).toBe('Camille');
+    // Rien sur l'identité de la cliente avant l'acceptation.
+    expect(JSON.stringify(offer)).not.toContain('Camille');
 
     await sleep(300);
     expect(pendingGuardGotOffer).toBe(false);
@@ -521,7 +522,12 @@ describe('Parcours complet d’une protection', () => {
       .set(client.auth)
       .send({ score: 1 })
       .expect(409);
-    const profile = await t.http().get('/api/guards/me').set(guard.auth).expect(200);
+    // La moyenne n'est visible que de l'équipe, jamais du garde.
+    const profile = await t
+      .http()
+      .get(`/api/admin/guards/${guard.user.id}`)
+      .set(admin.auth)
+      .expect(200);
     expect(profile.body.ratingAvg).toBe(5);
     expect(profile.body.ratingCount).toBe(1);
   });

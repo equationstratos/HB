@@ -3,6 +3,7 @@ export * from './mission-state';
 export * from './geo';
 export * from './routing';
 export * from './route-monitor';
+export * from './trip-window';
 export * from './schemas';
 export * from './types';
 export * from './realtime';

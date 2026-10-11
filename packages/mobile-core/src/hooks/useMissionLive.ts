@@ -1,12 +1,12 @@
 import { joinMission } from '@hb/api-client';
-import type { DeviationDto, LatLng, MissionDto, SosAlertDto } from '@hb/shared';
+import type { DeviationDto, GuardMissionDto, LatLng, MissionDto, SosAlertDto } from '@hb/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtime, useSocketEvent } from '../realtime';
 import { useApi } from '../session';
 
-export interface MissionLive {
-  mission: MissionDto | undefined;
+export interface MissionLive<M extends MissionDto | GuardMissionDto = MissionDto> {
+  mission: M | undefined;
   loading: boolean;
   error: unknown;
   refetch: () => void;
@@ -18,13 +18,16 @@ export interface MissionLive {
 
 /**
  * État d'une mission tenu à jour en temps réel : statut, trajet, positions, alertes.
+ * L'appli garde demande sa vue (GuardMissionDto), celle que l'API lui envoie.
  */
-export function useMissionLive(missionId: string): MissionLive {
+export function useMissionLive<M extends MissionDto | GuardMissionDto = MissionDto>(
+  missionId: string,
+): MissionLive<M> {
   const api = useApi();
   const queryClient = useQueryClient();
   const { socket, connected } = useRealtime();
   const key = ['mission', missionId];
-  const query = useQuery({ queryKey: key, queryFn: () => api.missions.get(missionId) });
+  const query = useQuery({ queryKey: key, queryFn: () => api.missions.get<M>(missionId) });
   const [client, setClient] = useState<LatLng | null>(null);
   const [guard, setGuard] = useState<LatLng | null>(null);
   const [deviations, setDeviations] = useState<DeviationDto[]>([]);
@@ -71,7 +74,7 @@ export function useMissionLive(missionId: string): MissionLive {
   });
   useSocketEvent('route:updated', ({ missionId: id, route }) => {
     if (id !== missionId) return;
-    queryClient.setQueryData<MissionDto>(key, (prev) => (prev ? { ...prev, route } : prev));
+    queryClient.setQueryData<M>(key, (prev) => (prev ? { ...prev, route } : prev));
   });
   useSocketEvent('location', (l) => {
     if (l.missionId !== missionId) return;

@@ -35,7 +35,7 @@ Pour régler le serveur et trouver les comptes de démo, voir
    - l'appli affiche l'itinéraire, la distance, la durée et l'heure d'arrivée prévue ;
    - elle choisit « maintenant » ou un créneau, une protection ponctuelle ou décomptée de son abonnement.
 2. **Attribution automatique.** La mission est proposée par vagues de 5 aux gardes validés, disponibles et proches, triés par distance puis par note. Le premier qui accepte l'obtient. Si personne n'accepte, l'admin est alerté et attribue à la main.
-3. **Le garde rejoint la cliente** (statut « en route »), puis démarre le suivi. Ils se reconnaissent grâce à un **mot de code** et ne connaissent l'un de l'autre que le prénom et l'initiale du nom.
+3. **Le garde rejoint la cliente** (statut « en route »), puis démarre le suivi. Ils se reconnaissent grâce à un **mot de code**. La cliente connaît le prénom et l'initiale du nom de son garde ; le garde ne connaît que le prénom de la cliente, et seulement pendant la mission (voir [RGPD](#rgpd)).
 4. **Surveillance du trajet en temps réel.** La position de la cliente est comparée au tracé prévu. Une alerte part au garde et à l'équipe dans quatre cas :
    - **écart de trajet** : hors de la tolérance pendant plus de 60 s ;
    - **arrêt prolongé** hors d'une étape ;
@@ -107,6 +107,11 @@ Côté code : `apps/api/src/wallet/` (routes `/api/guards/me/wallet`, `/api/guar
 - Partage limité aux missions actives, puis arrêt automatique.
 - Positions **supprimées 30 jours** après la fin de la mission (tâche quotidienne, elle-même tracée).
 - Minimisation des données entre la cliente et le garde.
+- **Ce que le garde voit de la cliente**, appliqué par l'API (vues, temps réel et notifications), pas seulement par l'appli :
+  - jamais son nom de famille ;
+  - son prénom uniquement sur la fiche d'une mission active (attribuée, en route ou en cours), pour l'aborder avec le mot de code ;
+  - aucun nom dans les propositions, la liste des missions, les missions terminées ou annulées, ni dans les notifications : seulement la date, le début, la durée, la fin, le mode et le trajet.
+- **Le garde ne voit pas les notes** que lui donnent les clientes : ni étoiles, ni commentaires, ni moyenne (pas de `GET /guards/me/ratings`, aucun champ de note dans ses réponses). Elles restent visibles de la cliente qui les a laissées et de l'équipe (fiche du garde, page « Notes »).
 
 ---
 

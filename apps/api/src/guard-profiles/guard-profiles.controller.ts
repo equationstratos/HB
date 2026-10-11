@@ -30,6 +30,10 @@ import { Meta } from '../common/request-meta';
 import { ZodPipe } from '../common/zod.pipe';
 import { GuardProfilesService, UploadedDocument } from './guard-profiles.service';
 
+/**
+ * Espace du garde. Les notes laissées par les clientes n'y sont jamais exposées : seule
+ * l'équipe les consulte (GET /admin/ratings/low, fiche du garde).
+ */
 @ApiTags('Garde')
 @ApiBearerAuth()
 @Roles('GUARD')
@@ -108,10 +112,5 @@ export class GuardProfilesController {
   @ApiZodBody(presenceSchema)
   presence(@CurrentUser() user: AuthUser, @Body(new ZodPipe(presenceSchema)) body: PresenceInput) {
     return this.guards.setPresence(user, body);
-  }
-
-  @Get('ratings')
-  ratings(@CurrentUser() user: AuthUser) {
-    return this.guards.myRatings(user.id);
   }
 }

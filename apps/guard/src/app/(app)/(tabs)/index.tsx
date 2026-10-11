@@ -10,7 +10,7 @@ import {
   useSocketEvent,
   useTheme,
 } from '@hb/mobile-core';
-import { formatPrice, GUARD_BUSY_STATUSES, type OfferDto } from '@hb/shared';
+import { formatPrice, GUARD_BUSY_STATUSES, type GuardMissionDto, type OfferDto } from '@hb/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -30,7 +30,8 @@ export default function Missions() {
   const offers = useQuery({ queryKey: ['offers'], queryFn: () => api.offers.list() });
   const missions = useQuery({
     queryKey: ['missions', 'mine'],
-    queryFn: () => api.missions.list({ status: [...GUARD_BUSY_STATUSES], pageSize: 20 }),
+    queryFn: () =>
+      api.missions.list<GuardMissionDto>({ status: [...GUARD_BUSY_STATUSES], pageSize: 20 }),
   });
   const wallet = useQuery({ queryKey: ['guard', 'wallet'], queryFn: () => api.guards.wallet() });
   const [available, setAvailable] = useState(false);

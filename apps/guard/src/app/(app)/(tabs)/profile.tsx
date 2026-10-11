@@ -2,11 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   Badge,
   Card,
-  fmtDateTime,
   getClient,
   Row,
   Screen,
-  Stars,
   T,
   useApi,
   useSession,
@@ -17,7 +15,7 @@ import { guardStatusLabel, maskPhone } from '@hb/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { Pressable } from 'react-native';
 
 function Item({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   const { colors } = useTheme();
@@ -37,7 +35,6 @@ export default function Profile() {
   const { user } = useSession();
   const api = useApi();
   const profile = useQuery({ queryKey: ['guard', 'me'], queryFn: () => api.guards.me() });
-  const ratings = useQuery({ queryKey: ['guard', 'ratings'], queryFn: () => api.guards.ratings() });
   const p = profile.data;
 
   return (
@@ -60,30 +57,6 @@ export default function Profile() {
             tone={p.status === 'APPROVED' ? 'success' : 'warning'}
           />
         )}
-      </Card>
-      <Card>
-        <T variant="label">{t('profile.rating')}</T>
-        {p?.ratingAvg ? (
-          <Row>
-            <Stars value={p.ratingAvg} size={20} />
-            <T variant="muted">
-              {p.ratingAvg.toFixed(1).replace('.', ',')} · {p.ratingCount} avis
-            </T>
-          </Row>
-        ) : (
-          <T variant="muted">{t('profile.noRating')}</T>
-        )}
-        {(ratings.data ?? []).slice(0, 5).map((r) => (
-          <View key={r.id} style={{ gap: 2, paddingTop: 6 }}>
-            <Row>
-              <Stars value={r.score} size={13} />
-              <T variant="small">
-                {r.clientFirstName} · {fmtDateTime(r.createdAt)}
-              </T>
-            </Row>
-            {r.comment && <T variant="muted">« {r.comment} »</T>}
-          </View>
-        ))}
       </Card>
       <Card>
         <Item
