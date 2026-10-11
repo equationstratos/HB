@@ -336,6 +336,12 @@ describe('Gains des gardes et virements', () => {
         .set(admin.auth)
         .expect(200);
       expect((detail.body as AdminPayoutDetailDto).iban).toBe(IBAN);
+      // L'équipe voit les gains couverts par le virement, et le changement récent de compte.
+      const body = detail.body as AdminPayoutDetailDto;
+      expect(body.earnings.length).toBeGreaterThan(0);
+      expect(body.earnings.reduce((sum, e) => sum + e.amountCents, 0)).toBe(body.amountCents);
+      expect(body.bankAccountRecentlyChanged).toBe(true);
+      expect(body.bankAccountChangedAt).not.toBeNull();
       expect(
         await t.prisma.auditLog.count({
           where: { action: 'admin.payout_viewed', entityId: firstPayoutId, actorId: admin.user.id },

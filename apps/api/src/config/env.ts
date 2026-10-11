@@ -1,5 +1,6 @@
 import {
   DEFAULT_GUARD_HOURLY_RATE_CENTS,
+  DEFAULT_GUARD_MAX_OVERTIME_MINUTES,
   DEFAULT_GUARD_MIN_BILLED_MINUTES,
   DEFAULT_MAP_ATTRIBUTION,
   DEFAULT_PAYOUT_MIN_CENTS,
@@ -86,6 +87,12 @@ export const envSchema = z.object({
     .int()
     .min(0)
     .default(DEFAULT_GUARD_MIN_BILLED_MINUTES),
+  /** Dépassement rémunéré au-delà du créneau réservé, en minutes (plafond des gains). */
+  GUARD_MAX_OVERTIME_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(DEFAULT_GUARD_MAX_OVERTIME_MINUTES),
   /** Montant minimal d'une demande de virement, en centimes. */
   PAYOUT_MIN_CENTS: z.coerce.number().int().min(1).default(DEFAULT_PAYOUT_MIN_CENTS),
 });

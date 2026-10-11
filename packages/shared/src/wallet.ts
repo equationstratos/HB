@@ -9,6 +9,11 @@ export const DEFAULT_GUARD_HOURLY_RATE_CENTS = 2000;
 export const DEFAULT_GUARD_MIN_BILLED_MINUTES = 30;
 /** Montant minimal d'un virement (10 €). Réglable côté API : PAYOUT_MIN_CENTS. */
 export const DEFAULT_PAYOUT_MIN_CENTS = 1000;
+/**
+ * Dépassement rémunéré au-delà du créneau réservé par la cliente. Réglable côté API :
+ * GUARD_MAX_OVERTIME_MINUTES. Une mission oubliée « en cours » ne rapporte pas davantage.
+ */
+export const DEFAULT_GUARD_MAX_OVERTIME_MINUTES = 30;
 
 export interface GuardEarningInput {
   /** Début du suivi (ou heure de départ prévue à défaut). */
@@ -16,21 +21,27 @@ export interface GuardEarningInput {
   endedAt: Date;
   hourlyRateCents: number;
   minBilledMinutes: number;
+  /** Plafond de la durée rémunérée : créneau réservé + dépassement admis. */
+  maxBilledMinutes?: number;
 }
 
 /**
- * Gain d'un garde pour une mission : durée commencée = minute due, avec un minimum facturé.
- * Montant arrondi au centime.
+ * Gain d'un garde pour une mission : durée commencée = minute due, avec un minimum facturé
+ * et un plafond (`capped` : la durée réelle dépassait le plafond). Montant arrondi au centime.
  */
 export function guardEarning(input: GuardEarningInput): {
   billedMinutes: number;
   amountCents: number;
+  capped: boolean;
 } {
   const minutes = Math.ceil((input.endedAt.getTime() - input.startedAt.getTime()) / 60_000);
-  const billedMinutes = Math.max(input.minBilledMinutes, minutes);
+  const capped = input.maxBilledMinutes !== undefined && minutes > input.maxBilledMinutes;
+  const worked = capped ? (input.maxBilledMinutes as number) : minutes;
+  const billedMinutes = Math.max(input.minBilledMinutes, worked);
   return {
     billedMinutes,
     amountCents: Math.round((input.hourlyRateCents * billedMinutes) / 60),
+    capped,
   };
 }
 

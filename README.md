@@ -76,7 +76,7 @@ Le garde suit son **solde disponible** dans l'onglet « Gains » de l'appli et l
 
 **Règles** (taux, minimum et seuil par défaut, réglables plus bas)
 
-- **Gain par mission** : dès qu'une mission passe à « terminée », le garde assigné est crédité automatiquement, une seule fois par mission. Montant = taux horaire × minutes rémunérées / 60, arrondi au centime. Minutes rémunérées = durée entre le début du suivi (ou l'heure de départ prévue à défaut) et la fin, chaque minute commencée comptant, avec un minimum de 30 min. Avec 20 €/h : 12 min → 10 €, 46 min 30 s → 47 min → 15,67 €.
+- **Gain par mission** : dès qu'une mission passe à « terminée », le garde assigné est crédité automatiquement, une seule fois par mission. Montant = taux horaire × minutes rémunérées / 60, arrondi au centime. Minutes rémunérées = durée entre le début du suivi (ou l'heure de départ prévue à défaut) et la fin, chaque minute commencée comptant, avec un minimum de 30 min et un **plafond** : le créneau réservé par la cliente plus 30 min de dépassement. Une mission oubliée « en cours » toute une nuit ne rapporte donc pas 12 h. Avec 20 €/h : 12 min → 10 €, 46 min 30 s → 47 min → 15,67 €.
 - **Solde disponible** = gains − virements demandés ou payés. Un virement refusé rend son montant au solde.
 - **Compte bancaire** : titulaire et IBAN, vérifiés dans l'appli et par l'API avec le même schéma (format, longueur selon le pays, clé de contrôle ISO 13616 modulo 97). L'IBAN est **chiffré** (AES-256-GCM) ; le garde ne le revoit que masqué (« FR76 •••• •••• 1234 ») et il n'apparaît jamais dans le journal d'audit.
 - **Virement** : « Virer sur mon compte » demande **tout le solde**, à partir de 10 €, avec un compte enregistré et une seule demande en attente à la fois (verrou en base et index unique partiel : deux demandes simultanées n'en créent qu'une). Le compte de destination est figé sur la demande.
@@ -84,7 +84,7 @@ Le garde suit son **solde disponible** dans l'onglet « Gains » de l'appli et l
 
 **Traitement des virements par l'équipe** (page « Virements » de l'admin, avec le nombre de demandes à traiter et une alerte en temps réel à chaque demande) :
 
-1. « Traiter » ouvre la demande avec l'**IBAN complet** à copier. Chaque consultation est tracée. Vérifiez que le titulaire est bien le garde.
+1. « Traiter » ouvre la demande avec l'**IBAN complet** à copier et les **missions couvertes** (début, fin, durée réelle et payée, montant ; « plafonnée » quand la mission a dépassé son créneau). Chaque consultation est tracée. Vérifiez que le titulaire est bien le garde. Un avertissement apparaît si le garde a changé d'IBAN moins de 48 h avant sa demande : confirmez avec lui par téléphone.
 2. Faites le virement depuis la banque de la plateforme.
 3. « Marquer comme payé », avec la référence du virement (facultative), ou « Refuser » avec un motif : le montant revient alors dans le solde du garde.
 4. Le garde est prévenu par notification et son écran se met à jour.
@@ -93,11 +93,12 @@ Seule une demande « Demandé » peut être traitée, une seule fois. Sont trac�
 
 **Réglages** (`apps/api/.env`) :
 
-| Variable                   | Défaut | Rôle                                                |
-| -------------------------- | ------ | --------------------------------------------------- |
-| `GUARD_HOURLY_RATE_CENTS`  | `2000` | rémunération du garde, en centimes par heure (20 €) |
-| `GUARD_MIN_BILLED_MINUTES` | `30`   | durée minimale rémunérée par mission, en minutes    |
-| `PAYOUT_MIN_CENTS`         | `1000` | montant minimal d'une demande de virement (10 €)    |
+| Variable                     | Défaut | Rôle                                                        |
+| ---------------------------- | ------ | ----------------------------------------------------------- |
+| `GUARD_HOURLY_RATE_CENTS`    | `2000` | rémunération du garde, en centimes par heure (20 €)         |
+| `GUARD_MIN_BILLED_MINUTES`   | `30`   | durée minimale rémunérée par mission, en minutes            |
+| `GUARD_MAX_OVERTIME_MINUTES` | `30`   | dépassement rémunéré au-delà du créneau réservé, en minutes |
+| `PAYOUT_MIN_CENTS`           | `1000` | montant minimal d'une demande de virement (10 €)            |
 
 Côté code : `apps/api/src/wallet/` (routes `/api/guards/me/wallet`, `/api/guards/me/bank-account`, `/api/guards/me/payouts` et `/api/admin/payouts`), règle de calcul et validation de l'IBAN dans `packages/shared/src/wallet.ts`. Le seed crédite les missions terminées des gardes de démonstration ; relancé sur une base existante, il n'ajoute que les gains manquants.
 

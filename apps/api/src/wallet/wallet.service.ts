@@ -40,6 +40,8 @@ export interface CompletedMission {
   id: string;
   guardId: string | null;
   departureAt: Date;
+  /** Fin du créneau réservé : base du plafond de la durée rémunérée. */
+  slotEndAt: Date;
   startedAt: Date | null;
   completedAt: Date;
 }
@@ -57,6 +59,9 @@ export interface CreditedEarning {
 const RECENT_EARNINGS = 50;
 const RECENT_PAYOUTS = 20;
 const ALREADY_PENDING = 'Un virement est déjà en cours de traitement';
+
+/** Compte bancaire modifié peu avant une demande de virement : signalé à l'équipe. */
+const BANK_CHANGE_WARNING_MS = 48 * 3_600_000;
 
 /**
  * Gains des gardes et virements. Pas de prestataire de paiement en v1 : l'équipe fait
@@ -82,15 +87,20 @@ export class WalletService {
   async creditMission(
     tx: Prisma.TransactionClient,
     mission: CompletedMission,
-  ): Promise<CreditedEarning | null> {
+  ): Promise<(CreditedEarning & { capped: boolean }) | null> {
     if (!mission.guardId) return null;
     const startedAt = mission.startedAt ?? mission.departureAt;
     const hourlyRateCents = this.config.get('GUARD_HOURLY_RATE_CENTS');
-    const { billedMinutes, amountCents } = guardEarning({
+    // Plafond : le créneau réservé par la cliente, plus le dépassement admis.
+    const slotMinutes = Math.ceil(
+      (mission.slotEndAt.getTime() - mission.departureAt.getTime()) / 60_000,
+    );
+    const { billedMinutes, amountCents, capped } = guardEarning({
       startedAt,
       endedAt: mission.completedAt,
       hourlyRateCents,
       minBilledMinutes: this.config.get('GUARD_MIN_BILLED_MINUTES'),
+      maxBilledMinutes: Math.max(0, slotMinutes) + this.config.get('GUARD_MAX_OVERTIME_MINUTES'),
     });
     const earning: CreditedEarning = {
       guardId: mission.guardId,
@@ -102,11 +112,11 @@ export class WalletService {
       amountCents,
     };
     const { count } = await tx.guardEarning.createMany({ data: earning, skipDuplicates: true });
-    return count === 1 ? earning : null;
+    return count === 1 ? { ...earning, capped } : null;
   }
 
   /** Trace un gain crédité, une fois la transaction validée. */
-  async auditEarning(earning: CreditedEarning): Promise<void> {
+  async auditEarning(earning: CreditedEarning & { capped: boolean }): Promise<void> {
     await this.audit.log({
       actor: 'SYSTEM',
       action: 'guard.earning_credited',
@@ -117,6 +127,8 @@ export class WalletService {
         amountCents: earning.amountCents,
         billedMinutes: earning.billedMinutes,
         hourlyRateCents: earning.hourlyRateCents,
+        // Durée réelle au-delà du créneau réservé : à vérifier par l'équipe.
+        capped: earning.capped,
       },
     });
   }
@@ -296,6 +308,27 @@ export class WalletService {
   async adminGet(admin: AuthUser, id: string, meta: RequestMeta): Promise<AdminPayoutDetailDto> {
     const payout = await this.findPayout(id);
     const iban = formatIban(this.crypto.decrypt(payout.ibanEncrypted));
+    // Gains couverts : ceux crédités depuis le virement précédent (un refus rend son montant).
+    const previous = await this.prisma.guardPayout.findFirst({
+      where: {
+        guardId: payout.guardId,
+        status: { not: 'REJECTED' },
+        requestedAt: { lt: payout.requestedAt },
+      },
+      orderBy: { requestedAt: 'desc' },
+    });
+    const [earnings, account] = await Promise.all([
+      this.prisma.guardEarning.findMany({
+        where: {
+          guardId: payout.guardId,
+          createdAt: { gt: previous?.requestedAt, lte: payout.requestedAt },
+        },
+        orderBy: { endedAt: 'desc' },
+        take: 100,
+      }),
+      this.prisma.guardBankAccount.findUnique({ where: { guardId: payout.guardId } }),
+    ]);
+    const changedAt = account?.updatedAt ?? null;
     await this.audit.log({
       actor: admin,
       action: 'admin.payout_viewed',
@@ -304,7 +337,14 @@ export class WalletService {
       metadata: { guardId: payout.guardId },
       meta,
     });
-    return { ...toAdminPayoutDto(payout), iban };
+    return {
+      ...toAdminPayoutDto(payout),
+      iban,
+      earnings: earnings.map(toEarningDto),
+      bankAccountChangedAt: changedAt?.toISOString() ?? null,
+      bankAccountRecentlyChanged:
+        !!changedAt && changedAt.getTime() > payout.requestedAt.getTime() - BANK_CHANGE_WARNING_MS,
+    };
   }
 
   async markPaid(

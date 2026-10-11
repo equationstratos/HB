@@ -400,4 +400,10 @@ export interface AdminPayoutDto extends PayoutDto {
 /** Détail d'un virement pour l'équipe : IBAN complet, consultation tracée. */
 export interface AdminPayoutDetailDto extends AdminPayoutDto {
   iban: string;
+  /** Gains couverts par ce virement (depuis le précédent virement non refusé). */
+  earnings: GuardEarningDto[];
+  /** Dernière modification du compte bancaire du garde. */
+  bankAccountChangedAt: string | null;
+  /** Compte bancaire modifié moins de 48 h avant la demande : vérification renforcée. */
+  bankAccountRecentlyChanged: boolean;
 }

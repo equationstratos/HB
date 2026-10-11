@@ -11,6 +11,7 @@ describe('gain du garde', () => {
     expect(guardEarning({ ...rule, startedAt: at(0), endedAt: at(12) })).toEqual({
       billedMinutes: 30,
       amountCents: 1000,
+      capped: false,
     });
   });
 
@@ -19,6 +20,7 @@ describe('gain du garde', () => {
     expect(guardEarning({ ...rule, startedAt: at(0), endedAt: at(46.5) })).toEqual({
       billedMinutes: 47,
       amountCents: 1567,
+      capped: false,
     });
     expect(guardEarning({ ...rule, startedAt: at(0), endedAt: at(60) }).amountCents).toBe(2000);
   });
@@ -31,7 +33,25 @@ describe('gain du garde', () => {
         startedAt: at(0),
         endedAt: at(5),
       }),
-    ).toEqual({ billedMinutes: 45, amountCents: 1875 });
+    ).toEqual({ billedMinutes: 45, amountCents: 1875, capped: false });
+  });
+
+  it('plafonne la durée rémunérée, sans descendre sous le minimum', () => {
+    const capped = guardEarning({
+      ...rule,
+      startedAt: at(0),
+      endedAt: at(600),
+      maxBilledMinutes: 90,
+    });
+    expect(capped).toEqual({ billedMinutes: 90, amountCents: 3000, capped: true });
+    // Sous le plafond : durée réelle.
+    expect(
+      guardEarning({ ...rule, startedAt: at(0), endedAt: at(80), maxBilledMinutes: 90 }),
+    ).toEqual({ billedMinutes: 80, amountCents: 2667, capped: false });
+    // Plafond inférieur au minimum : le minimum reste dû.
+    expect(
+      guardEarning({ ...rule, startedAt: at(0), endedAt: at(600), maxBilledMinutes: 10 }),
+    ).toMatchObject({ billedMinutes: 30, capped: true });
   });
 });
 

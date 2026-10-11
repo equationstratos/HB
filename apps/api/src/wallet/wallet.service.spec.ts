@@ -6,6 +6,7 @@ describe('WalletService.creditMission', () => {
   const settings: Record<string, number> = {
     GUARD_HOURLY_RATE_CENTS: 2400,
     GUARD_MIN_BILLED_MINUTES: 45,
+    GUARD_MAX_OVERTIME_MINUTES: 30,
   };
   const config = { get: (key: string) => settings[key] } as unknown as AppConfig;
   const wallet = new WalletService(
@@ -33,11 +34,12 @@ describe('WalletService.creditMission', () => {
       id: 'm1',
       guardId: 'g1',
       departureAt: at(-30),
+      slotEndAt: at(90),
       startedAt: at(0),
       completedAt: at(61.2),
     });
     // 61 min 12 s → 62 minutes commencées → 2400 × 62 / 60 = 2480 centimes.
-    expect(earning).toEqual({
+    const data = {
       guardId: 'g1',
       missionId: 'm1',
       startedAt: at(0),
@@ -45,8 +47,24 @@ describe('WalletService.creditMission', () => {
       billedMinutes: 62,
       hourlyRateCents: 2400,
       amountCents: 2480,
+    };
+    expect(earning).toEqual({ ...data, capped: false });
+    expect(createMany).toHaveBeenCalledWith({ data, skipDuplicates: true });
+  });
+
+  it('plafonne au créneau réservé + dépassement admis une mission oubliée « en cours »', async () => {
+    const { tx } = fakeTx();
+    // Créneau d'une heure, mission terminée 12 h après le début du suivi.
+    const earning = await wallet.creditMission(tx, {
+      id: 'm4',
+      guardId: 'g1',
+      departureAt: at(0),
+      slotEndAt: at(60),
+      startedAt: at(5),
+      completedAt: at(12 * 60),
     });
-    expect(createMany).toHaveBeenCalledWith({ data: earning, skipDuplicates: true });
+    // 60 min de créneau + 30 min de dépassement → 90 min → 2400 × 90 / 60 = 3600 centimes.
+    expect(earning).toMatchObject({ billedMinutes: 90, amountCents: 3600, capped: true });
   });
 
   it('part de l’heure de départ prévue quand le suivi n’a pas de début', async () => {
@@ -55,6 +73,7 @@ describe('WalletService.creditMission', () => {
       id: 'm2',
       guardId: 'g1',
       departureAt: at(0),
+      slotEndAt: at(60),
       startedAt: null,
       completedAt: at(10),
     });
@@ -63,7 +82,13 @@ describe('WalletService.creditMission', () => {
 
   it('ne crédite rien sans garde ni pour une mission déjà créditée', async () => {
     const none = fakeTx();
-    const mission = { id: 'm3', departureAt: at(0), startedAt: at(0), completedAt: at(90) };
+    const mission = {
+      id: 'm3',
+      departureAt: at(0),
+      slotEndAt: at(120),
+      startedAt: at(0),
+      completedAt: at(90),
+    };
     expect(await wallet.creditMission(none.tx, { ...mission, guardId: null })).toBeNull();
     expect(none.createMany).not.toHaveBeenCalled();
 

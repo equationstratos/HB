@@ -1,5 +1,5 @@
 import { errorMessage } from '@hb/api-client';
-import { formatPrice, payoutStatusLabel, type PayoutStatus } from '@hb/shared';
+import { formatDuration, formatPrice, payoutStatusLabel, type PayoutStatus } from '@hb/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -255,6 +255,51 @@ function PayoutDialog({
                 </>
               )}
             </dl>
+            {p.bankAccountRecentlyChanged && p.bankAccountChangedAt && (
+              <div className="alert-item">
+                <strong>Compte bancaire modifié récemment</strong>
+                <div className="small">
+                  Le garde a changé son IBAN le {fmtDateTime(p.bankAccountChangedAt)}, moins de 48 h
+                  avant la demande. Confirmez avec lui par téléphone avant de faire le virement.
+                </div>
+              </div>
+            )}
+            <h3 style={{ margin: 0 }}>Missions couvertes</h3>
+            {p.earnings.length === 0 ? (
+              <p className="small muted" style={{ margin: 0 }}>
+                Aucun gain rattaché à ce virement.
+              </p>
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Début</th>
+                      <th>Fin</th>
+                      <th>Durée réelle</th>
+                      <th>Durée payée</th>
+                      <th>Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {p.earnings.map((e) => (
+                      <tr key={e.id}>
+                        <td>{fmtDateTime(e.startedAt)}</td>
+                        <td>{fmtDateTime(e.endedAt)}</td>
+                        <td>{formatDuration(e.durationMinutes * 60)}</td>
+                        <td>
+                          {formatDuration(e.billedMinutes * 60)}{' '}
+                          {e.billedMinutes < e.durationMinutes && (
+                            <Badge tone="warning">plafonnée</Badge>
+                          )}
+                        </td>
+                        <td>{formatPrice(e.amountCents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {p.status === 'REQUESTED' && (
               <>
                 <p className="small muted" style={{ margin: 0 }}>
