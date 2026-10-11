@@ -261,18 +261,35 @@ export class MissionsService {
     });
     await this.events.publish(updated);
 
-    const notice: Partial<Record<MissionStatus, [string, string]>> = {
-      GUARD_EN_ROUTE: ['Votre garde est en route', `Mot de code : ${updated.codeWord}`],
-      IN_PROGRESS: ['Protection en cours', 'Votre garde vous suit discrètement. Bon trajet !'],
-      COMPLETED: ['Protection terminée', 'Merci ! Pensez à noter votre garde.'],
+    // Statut de la protection : la cliente et le garde sont prévenus, chacun avec son texte,
+    // sauf celui ou celle qui vient de le changer.
+    const notice: Partial<
+      Record<MissionStatus, Partial<Record<'CLIENT' | 'GUARD', [string, string]>>>
+    > = {
+      GUARD_EN_ROUTE: {
+        CLIENT: ['Votre garde est en route', `Mot de code : ${updated.codeWord}`],
+        GUARD: ['Mission : en route', 'Vous êtes indiqué en route vers la cliente.'],
+      },
+      IN_PROGRESS: {
+        CLIENT: ['Protection en cours', 'Votre garde vous suit discrètement. Bon trajet !'],
+        GUARD: ['Protection en cours', 'La protection a commencé.'],
+      },
+      COMPLETED: {
+        CLIENT: ['Protection terminée', 'Merci ! Pensez à noter votre garde.'],
+        GUARD: ['Protection terminée', 'Votre gain a été ajouté à votre solde.'],
+      },
     };
-    const text = notice[next];
-    if (text) {
-      const recipient = user.role === 'CLIENT' ? updated.guardId : updated.clientId;
+    const parties: ['CLIENT' | 'GUARD', string | null][] = [
+      ['CLIENT', updated.clientId],
+      ['GUARD', updated.guardId],
+    ];
+    for (const [role, recipient] of parties) {
+      const text = notice[next]?.[role];
+      if (!text || !recipient || recipient === user.id) continue;
       await this.notifications.toUsers([recipient], {
         title: text[0],
         body: text[1],
-        data: { missionId: id },
+        data: { type: 'status', missionId: id, status: next },
       });
     }
     return toMissionView(updated, user.role);
@@ -316,7 +333,7 @@ export class MissionsService {
     await this.notifications.toUsers(others, {
       title: 'Protection annulée',
       body: reason ? `Motif : ${reason}` : 'La protection a été annulée.',
-      data: { missionId: id },
+      data: { type: 'status', missionId: id, status: 'CANCELLED' },
     });
     return toMissionView(updated, user.role);
   }

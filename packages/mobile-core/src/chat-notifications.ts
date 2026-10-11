@@ -177,22 +177,32 @@ export function useActiveChat(missionId: string): void {
 
 const opened = new Set<string>();
 
+/** Écran ouvert par le toucher d'une notification, selon son type. */
+function notificationTarget(data: Record<string, unknown> | null): string | null {
+  const missionId = typeof data?.missionId === 'string' ? data.missionId : null;
+  if (data?.type === 'message') return missionId ? `/mission/${missionId}/chat` : null;
+  // Proposition : à accepter depuis l'accueil, la mission n'est pas encore celle du garde.
+  if (data?.type === 'offer') return '/';
+  if (data?.type === 'payout') return '/wallet';
+  return missionId ? `/mission/${missionId}` : null;
+}
+
 /**
- * Toucher une notification de message (locale ou push) ouvre la conversation de la mission,
- * y compris quand elle a lancé l'appli. `ready` : l'espace connecté est affiché.
+ * Toucher une notification (message, statut de la protection, proposition, virement…), locale
+ * ou push, ouvre l'écran correspondant, y compris quand elle a lancé l'appli.
+ * `ready` : l'espace connecté est affiché.
  */
-export function useOpenChatFromNotifications(ready: boolean): void {
+export function useNotificationNavigation(ready: boolean): void {
   useEffect(() => {
     if (!ready) return;
     const open = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
       const { identifier, content } = response.notification.request;
-      const data = content.data as { type?: unknown; missionId?: unknown } | null;
-      if (data?.type !== 'message' || typeof data.missionId !== 'string') return;
-      if (opened.has(identifier)) return;
+      const target = notificationTarget(content.data as Record<string, unknown> | null);
+      if (!target || opened.has(identifier)) return;
       opened.add(identifier);
       Notifications.clearLastNotificationResponse();
-      router.navigate(`/mission/${data.missionId}/chat`);
+      router.navigate(target as never);
     };
     open(Notifications.getLastNotificationResponse());
     const sub = Notifications.addNotificationResponseReceivedListener(open);

@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUSH_PROVIDER, PushProvider } from '../integrations/push.provider';
+import { RealtimeService } from '../realtime/realtime.service';
 
 export interface Notification {
   title: string;
@@ -14,7 +16,10 @@ export interface Notification {
   urgent?: boolean;
 }
 
-/** Notifications push. Ne lève jamais d'erreur : une notification perdue ne bloque rien. */
+/**
+ * Notifications : push, et copie par le temps réel que l'appli affiche elle-même (les APK de
+ * test n'ont pas de push). Ne lève jamais d'erreur : une notification perdue ne bloque rien.
+ */
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -22,11 +27,20 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PUSH_PROVIDER) private readonly push: PushProvider,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async toUsers(userIds: (string | null | undefined)[], n: Notification): Promise<void> {
-    const ids = userIds.filter((id): id is string => !!id);
+    const ids = [...new Set(userIds.filter((id): id is string => !!id))];
     if (ids.length === 0) return;
+    const live = {
+      id: randomUUID(),
+      title: n.title,
+      body: n.body,
+      data: n.data ?? {},
+      critical: !!n.critical,
+    };
+    for (const id of ids) this.realtime.toUser(id, 'notification', live);
     try {
       const users = await this.prisma.user.findMany({
         where: { id: { in: ids }, pushToken: { not: null }, status: 'ACTIVE' },

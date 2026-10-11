@@ -3,7 +3,8 @@ import {
   registerForPush,
   useApi,
   useMessageNotifications,
-  useOpenChatFromNotifications,
+  useNotificationNavigation,
+  useServerNotifications,
   useSession,
   useTheme,
 } from '@hb/mobile-core';
@@ -19,9 +20,11 @@ export default function AppLayout() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const page = segments[segments.length - 1];
-  // Nouveaux messages : notification hors de la conversation, qui s'ouvre au toucher.
+  // Nouveaux messages et statut de la protection : notifications affichées par l'appli,
+  // qui ouvrent le bon écran au toucher.
   useMessageNotifications();
-  useOpenChatFromNotifications(
+  useServerNotifications();
+  useNotificationNavigation(
     user?.role === 'CLIENT' && user.phoneVerified && !!user.locationConsentAt,
   );
 

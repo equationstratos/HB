@@ -32,6 +32,15 @@ Notifications.setNotificationHandler({
 
 /** Canal Android des messages de la mission (notifications distantes et locales). */
 export const MESSAGES_CHANNEL = 'messages';
+/** Canal Android du suivi des protections : statut, propositions, virements. */
+export const MISSIONS_CHANNEL = 'missions';
+
+let remotePush = false;
+
+/** Vrai quand le téléphone reçoit les notifications push (projet EAS + Firebase configurés). */
+export function hasRemotePush(): boolean {
+  return remotePush;
+}
 
 let channels: Promise<void> | null = null;
 
@@ -53,6 +62,13 @@ export function ensureNotificationChannels(): Promise<void> {
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
       sound: 'default',
       vibrationPattern: [0, 250, 150, 250],
+    });
+    await Notifications.setNotificationChannelAsync(MISSIONS_CHANNEL, {
+      name: 'Protections',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      // Écran verrouillé : la notification apparaît, mais pas son texte (mot de code…).
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
     });
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Informations',
@@ -90,6 +106,7 @@ export async function registerForPush(api: ApiEndpoints): Promise<string | null>
     const token = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined))
       .data;
     await api.me.setPushToken(token);
+    remotePush = true;
     return token;
   } catch {
     return null;

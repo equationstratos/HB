@@ -33,6 +33,22 @@ export interface ServerToClientEvents {
   'payout:requested': (payout: AdminPayoutDto) => void;
   /** Virement payé ou refusé par l'équipe, envoyé au garde concerné. */
   'payout:updated': (payout: PayoutDto) => void;
+  /**
+   * Notification de l'API (statut d'une protection, proposition, alerte…), aussi envoyée en
+   * push : l'appli l'affiche elle-même quand le push n'est pas disponible.
+   */
+  notification: (notification: AppNotificationDto) => void;
+}
+
+export interface AppNotificationDto {
+  /** Identifiant unique : une notification n'est affichée qu'une fois. */
+  id: string;
+  title: string;
+  body: string;
+  /** `type` (status, offer, message, payout…), `missionId`… */
+  data: Record<string, unknown>;
+  /** Alerte de sécurité : sonne même en mode discret. */
+  critical: boolean;
 }
 
 /** Événements envoyés par les applis. */

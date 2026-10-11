@@ -114,7 +114,7 @@ export class MatchingService {
       {
         title: 'Nouvelle mission proposée',
         body: `Départ ${MissionsService.isImmediate(mission.departureAt) ? 'immédiat' : 'programmé'} — répondez vite`,
-        data: { missionId },
+        data: { type: 'offer', missionId },
         critical: true,
       },
     );
@@ -297,7 +297,7 @@ export class MatchingService {
     await this.notifications.toUsers([updated.clientId], {
       title: 'Garde trouvé',
       body: `${updated.guard?.firstName ?? 'Un garde'} assurera votre protection. Mot de code : ${updated.codeWord}`,
-      data: { missionId: mission.id },
+      data: { type: 'status', missionId: mission.id, status: 'ASSIGNED' },
     });
     return { missionId: mission.id };
   }
@@ -344,7 +344,7 @@ export class MatchingService {
     await this.notifications.toUsers([mission.clientId], {
       title: 'Recherche en cours',
       body: "Aucun garde n'est disponible pour l'instant : notre équipe s'en occupe personnellement.",
-      data: { missionId: mission.id },
+      data: { type: 'status', missionId: mission.id, status: 'UNASSIGNED' },
     });
   }
 
