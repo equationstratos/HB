@@ -40,7 +40,8 @@ export const envSchema = z.object({
   TWILIO_FROM_NUMBER: z.string().optional(),
   EXPO_ACCESS_TOKEN: z.string().optional(),
 
-  ROUTING_PROVIDER: z.enum(['straight', 'osrm', 'ors']).default('straight'),
+  /** Itinéraires dans les rues par défaut ; « straight » (lignes droites) reste possible hors ligne. */
+  ROUTING_PROVIDER: z.enum(['straight', 'osrm', 'ors']).default('osrm'),
   OSRM_URL: z.string().url().default('https://routing.openstreetmap.de'),
   ORS_API_KEY: z.string().optional(),
 

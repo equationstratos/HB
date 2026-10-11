@@ -287,8 +287,17 @@ export function RouteBuilder({
               (departureAt?.getTime() ?? Date.now()) + preview.durationSeconds * 1000,
             ).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
           })}
-          message={preview.approximate ? t('book.approximate') : undefined}
-        />
+        >
+          {/* Service d'itinéraires injoignable : tracé en lignes droites, à titre indicatif. */}
+          {preview.approximate && (
+            <Row gap={6}>
+              <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+              <T variant="small" style={{ flex: 1 }}>
+                {t('book.approximate')}
+              </T>
+            </Row>
+          )}
+        </Banner>
       )}
       {busy && <T variant="small">{t('common.loading')}</T>}
       <ErrorText error={error} />
