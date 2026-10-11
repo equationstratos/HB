@@ -1,4 +1,12 @@
-import type { LatLng, LocationDto, MissionRouteDto } from '@hb/shared';
+import {
+  DEFAULT_MAP_ATTRIBUTION,
+  MAP_MAX_ZOOM,
+  MAP_TILE_PATH,
+  type LatLng,
+  type LocationDto,
+  type MissionRouteDto,
+} from '@hb/shared';
+import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Fragment, useEffect, useMemo } from 'react';
@@ -11,10 +19,15 @@ import {
   Tooltip,
   useMap,
 } from 'react-leaflet';
+import { api, client } from '../lib/client';
 
-const TILE_URL =
-  import.meta.env.VITE_TILE_URL ?? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+/** Tuiles servies par l'API (même origine), sauf adresse imposée à la compilation. */
+const TILE_URL = import.meta.env.VITE_TILE_URL || `${client.origin}${MAP_TILE_PATH}`;
 const PARIS: [number, number] = [48.8566, 2.3522];
+
+/** Leaflet affiche l'attribution en HTML : celle du serveur est du texte simple. */
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Leaflet écrit les couleurs en attributs SVG, qui n'acceptent pas var(--…) : on les résout. */
 function cssVar(name: string, fallback: string): string {
@@ -79,10 +92,23 @@ export function MissionMap({
   const fitKey = fitTarget.map((m) => `${m.id}:${m.route.version}`).join('|');
   const routeColor = cssVar('--route', '#6e5bf0');
   const clientColor = cssVar('--client', '#e0457b');
+  const mapConfig = useQuery({
+    queryKey: ['map-config'],
+    queryFn: api.map.config,
+    staleTime: Infinity,
+    enabled: !import.meta.env.VITE_TILE_URL,
+  });
+  const attribution = escapeHtml(mapConfig.data?.attribution ?? DEFAULT_MAP_ATTRIBUTION);
 
   return (
     <MapContainer center={PARIS} zoom={13} className={className} scrollWheelZoom>
-      <TileLayer url={TILE_URL} attribution="&copy; contributeurs OpenStreetMap" />
+      {/* react-leaflet ne met pas à jour l'attribution : la clé recrée la couche. */}
+      <TileLayer
+        key={attribution}
+        url={TILE_URL}
+        attribution={attribution}
+        maxZoom={MAP_MAX_ZOOM}
+      />
       <FitBounds points={points} fitKey={fitKey} />
       {missions.map((m) => {
         const line = m.route.geometry.coordinates.map(

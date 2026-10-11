@@ -1,11 +1,53 @@
-import type { LatLng, Position } from '@hb/shared';
+import {
+  APP_NAME,
+  DEFAULT_MAP_ATTRIBUTION,
+  MAP_MAX_ZOOM,
+  MAP_TILE_PATH,
+  type LatLng,
+  type Position,
+} from '@hb/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { getClient } from '../session';
 import { useTheme } from '../theme';
-import { DEFAULT_TILE_URL, mapHtml, type MapState } from './map-html';
+import { mapHtml, type MapState } from './map-html';
 
-const TILE_URL = process.env.EXPO_PUBLIC_TILE_URL ?? DEFAULT_TILE_URL;
+/** Adresse de tuiles imposée à la compilation ; sinon, celles du serveur choisi dans l'appli. */
+const TILE_URL_OVERRIDE = process.env.EXPO_PUBLIC_TILE_URL || null;
+
+/** Attribution du fond de carte, demandée une fois par serveur puis gardée en mémoire. */
+const attributions = new Map<string, Promise<string>>();
+
+function loadAttribution(origin: string): Promise<string> {
+  let request = attributions.get(origin);
+  if (!request) {
+    request = getClient()
+      .api.map.config()
+      .then((config) => config.attribution)
+      .catch(() => {
+        attributions.delete(origin); // nouvel essai au prochain affichage de la carte
+        return DEFAULT_MAP_ATTRIBUTION;
+      });
+    attributions.set(origin, request);
+  }
+  return request;
+}
+
+function useTileAttribution(origin: string | null): string {
+  const [loaded, setLoaded] = useState<{ origin: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!origin) return;
+    let active = true;
+    void loadAttribution(origin).then((text) => {
+      if (active) setLoaded({ origin, text });
+    });
+    return () => {
+      active = false;
+    };
+  }, [origin]);
+  return loaded && loaded.origin === origin ? loaded.text : DEFAULT_MAP_ATTRIBUTION;
+}
 
 export interface RouteMapProps {
   /** Tracé GeoJSON du trajet. */
@@ -24,7 +66,8 @@ const point = (p: LatLng | null | undefined) => (p ? { lat: p.lat, lng: p.lng } 
 
 /**
  * Carte du trajet surveillé : tracé, étapes, cliente et garde.
- * Leaflet dans une WebView, sur fond OpenStreetMap : aucune clé Google n'est requise.
+ * Leaflet dans une WebView, sur un fond de carte servi par l'API : aucune clé Google n'est
+ * requise, et le fournisseur de tuiles se change sur le serveur sans recompiler l'appli.
  */
 export function RouteMap({
   line,
@@ -38,11 +81,16 @@ export function RouteMap({
   const { colors, radius } = useTheme();
   const ref = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
-  const html = useMemo(() => mapHtml(TILE_URL), []);
+  const html = useMemo(() => mapHtml(), []);
+  // Le serveur peut changer en cours de route (écran « Serveur ») : adresse relue à chaque rendu.
+  const origin = TILE_URL_OVERRIDE ? null : getClient().origin;
+  const tileUrl = TILE_URL_OVERRIDE ?? `${origin}${MAP_TILE_PATH}`;
+  const attribution = useTileAttribution(origin);
 
-  // Seules des coordonnées et les couleurs du thème sont transmises à la page.
+  // Seules des coordonnées, les couleurs du thème et le fond de carte sont transmis à la page.
   const state: MapState = useMemo(
     () => ({
+      tiles: { url: tileUrl, attribution, maxZoom: MAP_MAX_ZOOM },
       line: (line ?? []).map(([lng, lat]) => [lng, lat] as [number, number]),
       waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
       client: point(client),
@@ -58,7 +106,7 @@ export function RouteMap({
         stop: colors.warning,
       },
     }),
-    [line, waypoints, client, guard, alert, colors],
+    [tileUrl, attribution, line, waypoints, client, guard, alert, colors],
   );
 
   useEffect(() => {
@@ -109,6 +157,9 @@ export function RouteMap({
         nestedScrollEnabled
         setSupportMultipleWindows={false}
         allowsLinkPreview={false}
+        // Page en https://localhost, serveur de test en http : sans cela, Android bloque les tuiles.
+        mixedContentMode="always"
+        applicationNameForUserAgent={APP_NAME}
         style={{ flex: 1, backgroundColor: colors.surfaceMuted }}
         accessibilityLabel="Carte du trajet"
       />

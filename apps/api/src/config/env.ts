@@ -1,3 +1,4 @@
+import { DEFAULT_MAP_ATTRIBUTION } from '@hb/shared';
 import { z } from 'zod';
 
 const bool = z
@@ -50,6 +51,19 @@ export const envSchema = z.object({
   S3_ENDPOINT: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
+
+  /** Fond de carte relayé par l'API : {z}, {x}, {y}, et au besoin {s} (a, b ou c) et {r}. */
+  MAP_TILE_URL: z
+    .string()
+    .url()
+    .refine(
+      (v) => /^https?:\/\//i.test(v) && ['{z}', '{x}', '{y}'].every((p) => v.includes(p)),
+      'MAP_TILE_URL : adresse http(s) contenant {z}, {x} et {y}',
+    )
+    .default('https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+  MAP_TILE_ATTRIBUTION: z.string().min(1).default(DEFAULT_MAP_ATTRIBUTION),
+  /** Exigé par la politique d'usage des tuiles OpenStreetMap : identifie l'application. */
+  MAP_TILE_USER_AGENT: z.string().min(1).default('HB/0.1 (+https://github.com/equationstratos/HB)'),
 
   MATCHING_WAVE_SIZE: z.coerce.number().int().min(1).default(5),
   MATCHING_WAVE_TIMEOUT_SECONDS: z.coerce.number().int().min(1).default(120),

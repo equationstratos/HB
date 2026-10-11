@@ -23,6 +23,7 @@ import type {
   LoginInput,
   LoginResponse,
   LowRatedGuardDto,
+  MapConfigDto,
   MessageDto,
   MfaSetupResponse,
   MissionContactsDto,
@@ -118,6 +119,11 @@ export function createEndpoints(http: Http) {
 
     routes: {
       preview: (input: RouteRequestInput) => post<ComputedRoute>('/routes/preview', input),
+    },
+
+    map: {
+      /** Réglages du fond de carte (route publique). */
+      config: () => get<MapConfigDto>('/map/config'),
     },
 
     missions: {
