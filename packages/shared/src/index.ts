@@ -10,3 +10,4 @@ export * from './constants';
 export * from './labels.fr';
 export * from './theme';
 export * from './utils';
+export * from './wallet';

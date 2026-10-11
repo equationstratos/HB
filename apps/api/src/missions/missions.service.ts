@@ -40,6 +40,7 @@ import { SubscriptionsService } from '../plans/subscriptions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RoutingService } from '../routing/routing.service';
+import { WalletService } from '../wallet/wallet.service';
 import { toMissionDto, toRouteDto, Viewer } from './mission.mapper';
 
 /** En dessous de ce délai, une réservation est traitée comme « maintenant ». */
@@ -59,6 +60,7 @@ export class MissionsService {
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
     private readonly crypto: CryptoService,
+    private readonly wallet: WalletService,
   ) {}
 
   static isImmediate(departureAt: Date, now = new Date()): boolean {
@@ -217,9 +219,17 @@ export class MissionsService {
       data.startedAt = now;
       data.monitorState = INITIAL_MONITOR_STATE as unknown as Prisma.InputJsonValue;
     }
-    if (next === 'COMPLETED') data.completedAt = now;
-
-    await this.transition(mission, data);
+    if (next === 'COMPLETED') {
+      data.completedAt = now;
+      // Fin de mission et gain du garde dans la même transaction : jamais l'un sans l'autre.
+      const earning = await this.prisma.$transaction(async (tx) => {
+        await this.transition(mission, data, tx);
+        return this.wallet.creditMission(tx, { ...mission, completedAt: now });
+      });
+      if (earning) await this.wallet.auditEarning(earning);
+    } else {
+      await this.transition(mission, data);
+    }
     let updated = await this.access.load(id);
 
     if (next === 'IN_PROGRESS' && updated.route) {
@@ -497,8 +507,9 @@ export class MissionsService {
   private async transition(
     mission: MissionWithRelations,
     data: Prisma.MissionUncheckedUpdateManyInput,
+    db: Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    const { count } = await this.prisma.mission.updateMany({
+    const { count } = await db.mission.updateMany({
       where: { id: mission.id, status: mission.status, guardId: mission.guardId },
       data,
     });

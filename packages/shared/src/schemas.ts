@@ -5,8 +5,10 @@ import {
   MISSION_STATUSES,
   MISSION_TYPES,
   MissionStatus,
+  PAYOUT_STATUSES,
   TRANSPORT_MODES,
 } from './enums';
+import { isValidIban, normalizeIban } from './wallet';
 
 /** Numéro au format international E.164 (+33612345678). */
 export const phoneSchema = z
@@ -274,3 +276,29 @@ export const auditQuerySchema = paginationSchema.extend({
   to: isoDateTime.optional(),
 });
 export type AuditQuery = z.infer<typeof auditQuerySchema>;
+
+// ---------- Gains et virements des gardes ----------
+
+/** IBAN saisi librement (espaces, minuscules) : normalisé, puis longueur et clé vérifiées. */
+export const ibanSchema = z
+  .string()
+  .max(50)
+  .transform(normalizeIban)
+  .refine(isValidIban, 'IBAN invalide : vérifiez les caractères saisis');
+
+export const bankAccountSchema = z.object({
+  holderName: z.string().trim().min(2, 'Indiquez le titulaire du compte').max(70),
+  iban: ibanSchema,
+});
+export type BankAccountInput = z.infer<typeof bankAccountSchema>;
+
+export const payoutListQuerySchema = paginationSchema.extend({
+  status: csvOf(PAYOUT_STATUSES).optional(),
+});
+export type PayoutListQuery = z.infer<typeof payoutListQuerySchema>;
+
+export const payoutPaidSchema = z.object({
+  /** Référence du virement dans la banque de la plateforme (facultative). */
+  bankReference: z.string().trim().max(100).optional(),
+});
+export type PayoutPaidInput = z.infer<typeof payoutPaidSchema>;
