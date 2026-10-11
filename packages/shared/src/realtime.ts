@@ -1,5 +1,6 @@
 import type {
   DeviationDto,
+  GuardMissionDto,
   LocationDto,
   MessageDto,
   MissionDto,
@@ -13,7 +14,8 @@ export const REALTIME_NAMESPACE = '/rt';
 
 /** Événements envoyés par le serveur. */
 export interface ServerToClientEvents {
-  'mission:updated': (mission: MissionDto) => void;
+  /** Chacun reçoit sa vue : GuardMissionDto pour le garde. */
+  'mission:updated': (mission: MissionDto | GuardMissionDto) => void;
   'mission:unassigned': (mission: MissionDto) => void;
   'route:updated': (payload: { missionId: string; route: MissionRouteDto }) => void;
   location: (location: LocationDto) => void;

@@ -117,6 +117,11 @@ export const fr = {
     fromYou: 'à {{distance}} de vous',
     taken: 'Mission attribuée à un autre garde.',
   },
+  trip: {
+    start: 'Début',
+    duration: 'Durée',
+    end: 'Fin',
+  },
   mission: {
     client: 'Cliente',
     codeWord: 'Mot de code',
@@ -137,6 +142,7 @@ export const fr = {
     handle: 'Je m’en occupe',
     resolve: 'Situation réglée',
     sharing: 'Votre position est partagée pendant la mission',
+    sharingBody: 'Suivi de la mission en cours',
     sharingForeground:
       'Gardez l’application ouverte : le suivi en arrière-plan nécessite l’application installée (pas Expo Go).',
     routeChanged: 'La cliente a modifié son trajet.',
@@ -153,9 +159,6 @@ export const fr = {
   },
   profile: {
     title: 'Profil',
-    rating: 'Note moyenne',
-    noRating: 'Pas encore de note',
-    reviews: 'Derniers avis',
     application: 'Zone et informations',
     security: 'Double authentification',
     logout: 'Se déconnecter',

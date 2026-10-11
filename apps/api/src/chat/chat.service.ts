@@ -67,12 +67,9 @@ export class ChatService {
     this.realtime.toMissionAndParties(mission, 'chat:message', dto);
 
     const recipients = [mission.clientId, mission.guardId].filter((id) => id !== user.id);
+    // Aucun nom de cliente dans les notifications du garde (affichées sur l'écran verrouillé).
     const from =
-      user.role === 'ADMIN'
-        ? "L'équipe"
-        : user.role === 'GUARD'
-          ? 'Votre garde'
-          : mission.client.firstName;
+      user.role === 'ADMIN' ? "L'équipe" : user.role === 'GUARD' ? 'Votre garde' : 'Votre cliente';
     await this.notifications.toUsers(recipients, {
       title: `Message de ${from}`,
       body: body.length > 120 ? `${body.slice(0, 117)}…` : body,

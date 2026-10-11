@@ -9,7 +9,7 @@ import {
   useSocketEvent,
   useTheme,
 } from '@hb/mobile-core';
-import { GUARD_BUSY_STATUSES, type OfferDto } from '@hb/shared';
+import { GUARD_BUSY_STATUSES, type GuardMissionDto, type OfferDto } from '@hb/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +28,8 @@ export default function Missions() {
   const offers = useQuery({ queryKey: ['offers'], queryFn: () => api.offers.list() });
   const missions = useQuery({
     queryKey: ['missions', 'mine'],
-    queryFn: () => api.missions.list({ status: [...GUARD_BUSY_STATUSES], pageSize: 20 }),
+    queryFn: () =>
+      api.missions.list<GuardMissionDto>({ status: [...GUARD_BUSY_STATUSES], pageSize: 20 }),
   });
   const [available, setAvailable] = useState(false);
   const [error, setError] = useState<string | null>(null);

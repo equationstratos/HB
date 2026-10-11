@@ -16,6 +16,7 @@ import type {
   GuardApplicationInput,
   GuardDocumentType,
   GuardListQuery,
+  GuardMissionDto,
   GuardProfileDto,
   LiveMissionDto,
   LocationDto,
@@ -51,6 +52,8 @@ import type { Http } from './http';
 
 type Page = { page?: number; pageSize?: number };
 type MissionQuery = Page & { status?: MissionStatus[]; from?: string; to?: string };
+/** La vue d'une mission dépend du rôle : l'appli garde demande GuardMissionDto. */
+type MissionView = MissionDto | GuardMissionDto;
 
 export interface Candidate {
   guardId: string;
@@ -122,12 +125,15 @@ export function createEndpoints(http: Http) {
 
     missions: {
       create: (input: CreateMissionInput) => post<MissionDto>('/missions', input),
-      list: (query: MissionQuery = {}) => get<Paginated<MissionDto>>('/missions', query),
-      get: (id: string) => get<MissionDto>(`/missions/${id}`),
-      setStatus: (id: string, status: 'GUARD_EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETED') =>
-        post<MissionDto>(`/missions/${id}/status`, { status }),
-      cancel: (id: string, reason?: string) =>
-        post<MissionDto>(`/missions/${id}/cancel`, { reason }),
+      list: <M extends MissionView = MissionDto>(query: MissionQuery = {}) =>
+        get<Paginated<M>>('/missions', query),
+      get: <M extends MissionView = MissionDto>(id: string) => get<M>(`/missions/${id}`),
+      setStatus: <M extends MissionView = MissionDto>(
+        id: string,
+        status: 'GUARD_EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETED',
+      ) => post<M>(`/missions/${id}/status`, { status }),
+      cancel: <M extends MissionView = MissionDto>(id: string, reason?: string) =>
+        post<M>(`/missions/${id}/cancel`, { reason }),
       updateRoute: (id: string, input: RouteRequestInput) =>
         put<MissionDto>(`/missions/${id}/route`, input),
       locations: (id: string) => get<LocationDto[]>(`/missions/${id}/locations`),
@@ -183,7 +189,6 @@ export function createEndpoints(http: Http) {
       setAvailability: (input: AvailabilityInput) =>
         put<GuardProfileDto>('/guards/me/availability', input),
       setPresence: (input: PresenceInput) => post<GuardProfileDto>('/guards/me/presence', input),
-      ratings: () => get<RatingDto[]>('/guards/me/ratings'),
     },
 
     admin: {

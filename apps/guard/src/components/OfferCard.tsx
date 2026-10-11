@@ -22,7 +22,10 @@ function countdown(expiresAt: string): string {
     : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** Proposition de mission : trajet, horaire, distance ; acceptation en un geste. */
+/**
+ * Proposition de mission : trajet, horaire, distance ; acceptation en un geste. Rien sur
+ * l'identité de la cliente.
+ */
 export function OfferCard({ offer, onDone }: { offer: OfferDto; onDone: (id: string) => void }) {
   const { t } = useTranslation();
   const api = useApi();
@@ -69,8 +72,8 @@ export function OfferCard({ offer, onDone }: { offer: OfferDto; onDone: (id: str
         </T>
       </Row>
       <T variant="muted">
-        {m.clientFirstName} · {transportModeLabel[m.route.mode]} ·{' '}
-        {formatDistance(m.route.distanceMeters)} · {formatDuration(m.route.durationSeconds)}
+        {transportModeLabel[m.route.mode]} · {formatDistance(m.route.distanceMeters)} ·{' '}
+        {formatDuration(m.route.durationSeconds)}
       </T>
       <T variant="small">
         {m.route.waypoints[0]?.address ?? 'Départ'} →{' '}

@@ -5,7 +5,6 @@ import {
   Card,
   ErrorText,
   fmtDateTime,
-  fmtTime,
   Loading,
   MissionSteps,
   RouteMap,
@@ -22,24 +21,29 @@ import {
 import {
   deviationTypeLabel,
   formatDistance,
-  formatDuration,
   missionStatusLabel,
   SOS_STATUSES,
   transportModeLabel,
+  type GuardMissionDto,
 } from '@hb/shared';
 import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, View } from 'react-native';
+import { TripTimes } from '@/components/TripTimes';
 
-/** Mission du garde : rejoindre la cliente, la suivre à distance, réagir aux alertes. */
+/**
+ * Mission du garde : rejoindre la cliente, la suivre à distance, réagir aux alertes.
+ * Le prénom de la cliente n'est connu que pendant la mission active (l'API ne l'envoie plus
+ * ensuite) ; jamais son nom de famille.
+ */
 export default function GuardMission() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
   const api = useApi();
   const { colors } = useTheme();
-  const live = useMissionLive(id);
+  const live = useMissionLive<GuardMissionDto>(id);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -47,7 +51,7 @@ export default function GuardMission() {
   const tracking = m?.status === 'GUARD_EN_ROUTE' || m?.status === 'IN_PROGRESS';
   const sharing = useLocationSharing(id, tracking, {
     title: t('mission.sharing'),
-    body: m?.client.firstName ?? '',
+    body: t('mission.sharingBody'),
     color: colors.primary,
   });
 
@@ -159,10 +163,12 @@ export default function GuardMission() {
       <Card>
         <Row>
           <View style={{ flex: 1 }}>
-            <T variant="small">{t('mission.client')}</T>
-            <T variant="heading">
-              {m.client.firstName} {m.client.lastName}
-            </T>
+            {m.client.firstName ? (
+              <>
+                <T variant="small">{t('mission.client')}</T>
+                <T variant="heading">{m.client.firstName}</T>
+              </>
+            ) : null}
           </View>
           <View
             style={{
@@ -214,14 +220,10 @@ export default function GuardMission() {
       />
       <Card>
         <T variant="label">
-          {fmtDateTime(m.departureAt)} · {transportModeLabel[m.route.mode]}
+          {fmtDateTime(m.departureAt)} · {transportModeLabel[m.route.mode]} ·{' '}
+          {formatDistance(m.route.distanceMeters)}
         </T>
-        <T variant="muted">
-          {formatDistance(m.route.distanceMeters)} · {formatDuration(m.route.durationSeconds)}
-          {m.status === 'IN_PROGRESS'
-            ? ` · arrivée prévue ${fmtTime(m.route.expectedArrivalAt)}`
-            : ''}
-        </T>
+        <TripTimes mission={m} />
         {m.route.waypoints.map((w, i) => (
           <T key={i} variant="small">
             {i === 0 ? 'Départ' : i === m.route.waypoints.length - 1 ? 'Arrivée' : `Étape ${i}`} :{' '}

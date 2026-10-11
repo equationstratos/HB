@@ -378,6 +378,7 @@ export class MatchingService {
     return seconds * 1000;
   }
 
+  /** Le garde ne sait rien de la cliente tant qu'il n'a pas accepté : ni nom, ni prénom. */
   private toOfferDto(offer: MissionOffer, mission: MissionWithRelations): OfferDto {
     return {
       id: offer.id,
@@ -391,7 +392,6 @@ export class MatchingService {
         slotEndAt: mission.slotEndAt.toISOString(),
         type: mission.type,
         route: toRouteDto(mission.route!),
-        clientFirstName: mission.client.firstName,
       },
     };
   }
