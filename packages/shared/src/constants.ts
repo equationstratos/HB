@@ -61,3 +61,12 @@ export const EMERGENCY_NUMBERS = {
 
 /** Nom affiché de la plateforme (SMS, appels, écrans). À adapter à la marque définitive. */
 export const APP_NAME = 'HB';
+
+/**
+ * Niveau de l'API, renvoyé par GET /api/health : augmenté quand les applis ont besoin d'un
+ * serveur plus récent. 2 : fond de carte servi par l'API, cagnotte des gardes, notifications
+ * de statut dans les applis.
+ */
+export const API_LEVEL = 2;
+/** Niveau d'API attendu par les applis : en dessous, elles demandent de mettre le serveur à jour. */
+export const REQUIRED_API_LEVEL = 2;

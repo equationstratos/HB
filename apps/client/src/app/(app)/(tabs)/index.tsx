@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Row,
+  ServerUpdateBanner,
   T,
   useApi,
   useSession,
@@ -50,6 +51,8 @@ export default function Home() {
           <T variant="title">{t('home.hello', { name: user?.firstName ?? '' })}</T>
           <T variant="muted">{t('home.subtitle')}</T>
         </View>
+
+        <ServerUpdateBanner />
 
         {active && (
           <Card

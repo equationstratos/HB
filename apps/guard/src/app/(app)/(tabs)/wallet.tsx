@@ -9,6 +9,7 @@ import {
   fmtDateTime,
   fmtTime,
   Row,
+  ServerUpdateBanner,
   T,
   useApi,
   useSocketEvent,
@@ -102,6 +103,7 @@ export default function Wallet() {
           <RefreshControl refreshing={wallet.isRefetching} onRefresh={() => void refresh()} />
         }
       >
+        <ServerUpdateBanner />
         <T variant="title">{t('wallet.title')}</T>
         <ErrorText error={wallet.error ? errorMessage(wallet.error) : null} />
 

@@ -16,10 +16,11 @@ import { join, resolve } from 'path';
 import {
   CODE_WORDS,
   DEFAULT_GUARD_HOURLY_RATE_CENTS,
+  DEFAULT_GUARD_MAX_OVERTIME_MINUTES,
   DEFAULT_GUARD_MIN_BILLED_MINUTES,
   DEFAULT_TOLERANCE_METERS,
   expectedArrival,
-  guardEarning,
+  missionEarning,
   slotEnd,
   straightLineRoute,
 } from '@hb/shared';
@@ -54,6 +55,10 @@ function envInt(name: string, fallback: number): number {
 async function seedEarnings(): Promise<number> {
   const hourlyRateCents = envInt('GUARD_HOURLY_RATE_CENTS', DEFAULT_GUARD_HOURLY_RATE_CENTS);
   const minBilledMinutes = envInt('GUARD_MIN_BILLED_MINUTES', DEFAULT_GUARD_MIN_BILLED_MINUTES);
+  const maxOvertimeMinutes = envInt(
+    'GUARD_MAX_OVERTIME_MINUTES',
+    DEFAULT_GUARD_MAX_OVERTIME_MINUTES,
+  );
   const missions = await prisma.mission.findMany({
     where: {
       status: 'COMPLETED',
@@ -64,15 +69,18 @@ async function seedEarnings(): Promise<number> {
   });
   const { count } = await prisma.guardEarning.createMany({
     data: missions.map((m) => {
-      const startedAt = m.startedAt ?? m.departureAt;
-      const endedAt = m.completedAt!;
+      const { startedAt, endedAt, billedMinutes, amountCents } = missionEarning(
+        { ...m, completedAt: m.completedAt! },
+        { hourlyRateCents, minBilledMinutes, maxOvertimeMinutes },
+      );
       return {
         guardId: m.guardId!,
         missionId: m.id,
         startedAt,
         endedAt,
         hourlyRateCents,
-        ...guardEarning({ startedAt, endedAt, hourlyRateCents, minBilledMinutes }),
+        billedMinutes,
+        amountCents,
       };
     }),
     skipDuplicates: true,

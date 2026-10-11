@@ -11,10 +11,11 @@ import {
   BankAccountDto,
   BankAccountInput,
   formatIban,
+  EarningRule,
   formatPrice,
-  guardEarning,
   GuardWalletDto,
   maskIban,
+  missionEarning,
   Paginated,
   PayoutDto,
   PayoutListQuery,
@@ -89,30 +90,32 @@ export class WalletService {
     mission: CompletedMission,
   ): Promise<(CreditedEarning & { capped: boolean }) | null> {
     if (!mission.guardId) return null;
-    const startedAt = mission.startedAt ?? mission.departureAt;
-    const hourlyRateCents = this.config.get('GUARD_HOURLY_RATE_CENTS');
+    const rule = this.earningRule();
     // Plafond : le créneau réservé par la cliente, plus le dépassement admis.
-    const slotMinutes = Math.ceil(
-      (mission.slotEndAt.getTime() - mission.departureAt.getTime()) / 60_000,
+    const { startedAt, endedAt, billedMinutes, amountCents, capped } = missionEarning(
+      mission,
+      rule,
     );
-    const { billedMinutes, amountCents, capped } = guardEarning({
-      startedAt,
-      endedAt: mission.completedAt,
-      hourlyRateCents,
-      minBilledMinutes: this.config.get('GUARD_MIN_BILLED_MINUTES'),
-      maxBilledMinutes: Math.max(0, slotMinutes) + this.config.get('GUARD_MAX_OVERTIME_MINUTES'),
-    });
     const earning: CreditedEarning = {
       guardId: mission.guardId,
       missionId: mission.id,
       startedAt,
-      endedAt: mission.completedAt,
+      endedAt,
       billedMinutes,
-      hourlyRateCents,
+      hourlyRateCents: rule.hourlyRateCents,
       amountCents,
     };
     const { count } = await tx.guardEarning.createMany({ data: earning, skipDuplicates: true });
     return count === 1 ? { ...earning, capped } : null;
+  }
+
+  /** Règle de rémunération configurée (taux, minimum, dépassement admis). */
+  earningRule(): EarningRule {
+    return {
+      hourlyRateCents: this.config.get('GUARD_HOURLY_RATE_CENTS'),
+      minBilledMinutes: this.config.get('GUARD_MIN_BILLED_MINUTES'),
+      maxOvertimeMinutes: this.config.get('GUARD_MAX_OVERTIME_MINUTES'),
+    };
   }
 
   /** Trace un gain crédité, une fois la transaction validée. */
@@ -373,6 +376,7 @@ export class WalletService {
     await this.notifications.toUsers([payout.guardId], {
       title: 'Virement effectué',
       body: `${formatPrice(payout.amountCents)} ont été virés sur votre compte ${maskIban(payout.ibanPrefix, payout.ibanLast4)}.`,
+      data: { type: 'payout', payoutId: payout.id },
     });
     return toAdminPayoutDto(payout);
   }
@@ -397,6 +401,7 @@ export class WalletService {
     await this.notifications.toUsers([payout.guardId], {
       title: 'Virement refusé',
       body: `Motif : ${reason}. Le montant est de nouveau disponible dans votre solde.`,
+      data: { type: 'payout', payoutId: payout.id },
     });
     return toAdminPayoutDto(payout);
   }

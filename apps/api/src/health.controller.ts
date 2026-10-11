@@ -1,3 +1,4 @@
+import { API_LEVEL } from '@hb/shared';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -14,6 +15,7 @@ export class HealthController {
   @Get()
   async health() {
     await this.prisma.$queryRaw`SELECT 1`;
-    return { status: 'ok', time: new Date().toISOString() };
+    // apiLevel : les applis signalent un serveur trop ancien pour elles.
+    return { status: 'ok', apiLevel: API_LEVEL, time: new Date().toISOString() };
   }
 }

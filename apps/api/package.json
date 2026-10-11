@@ -18,7 +18,8 @@
     "seed": "tsx --env-file=.env prisma/seed.ts",
     "simulate": "tsx --env-file=.env scripts/simulate.ts",
     "postinstall": "prisma generate",
-    "init:env": "node scripts/init-env.mjs"
+    "init:env": "node scripts/init-env.mjs",
+    "update:server": "prisma migrate deploy && node scripts/init-env.mjs --upgrade && tsx --env-file=.env scripts/update-data.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.900.0",

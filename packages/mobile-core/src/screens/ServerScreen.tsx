@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Banner, Button, Field, Screen, T } from '../ui/primitives';
-import { checkServer, currentServerUrl, normalizeServerUrl, saveServerUrl } from '../server';
+import { currentServerUrl, inspectServer, normalizeServerUrl, saveServerUrl } from '../server';
 
 /**
  * Réglage de l'adresse du serveur, pour les versions de test : l'appli peut viser
@@ -11,13 +11,14 @@ import { checkServer, currentServerUrl, normalizeServerUrl, saveServerUrl } from
 export function ServerScreen() {
   const { t } = useTranslation();
   const [value, setValue] = useState(currentServerUrl());
-  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'ko'>('idle');
+  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'outdated' | 'ko'>('idle');
 
   const url = value.trim() ? normalizeServerUrl(value) : '';
 
   const test = async () => {
     setStatus('checking');
-    setStatus((await checkServer(url)) ? 'ok' : 'ko');
+    const check = await inspectServer(url);
+    setStatus(!check.reachable ? 'ko' : check.upToDate ? 'ok' : 'outdated');
   };
 
   const save = async () => {
@@ -43,6 +44,14 @@ export function ServerScreen() {
         hint={url ? t('server.resolved', { url }) : undefined}
       />
       {status === 'ok' && <Banner tone="success" icon="checkmark-circle" title={t('server.ok')} />}
+      {status === 'outdated' && (
+        <Banner
+          tone="warning"
+          icon="cloud-download-outline"
+          title={t('server.outdatedTitle')}
+          message={t('server.outdatedMessage')}
+        />
+      )}
       {status === 'ko' && (
         <Banner
           tone="danger"

@@ -20,6 +20,9 @@ export const fr = {
     save: 'Enregistrer',
     ok: 'Serveur joignable.',
     ko: 'Serveur injoignable.',
+    outdatedTitle: 'Serveur à mettre à jour',
+    outdatedMessage:
+      'Le serveur HB n’est pas à jour pour cette version de l’appli : la carte, les trajets ou les gains peuvent ne pas fonctionner. Sur l’ordinateur du serveur : git pull, puis pnpm run update:server, puis pnpm dev.',
     koHint:
       'Vérifiez que l’API est lancée (pnpm dev), que le téléphone est sur le même Wi-Fi et que le pare-feu autorise le port 3000.',
     link: 'Serveur : {{host}}',

@@ -45,6 +45,38 @@ export function guardEarning(input: GuardEarningInput): {
   };
 }
 
+export interface EarningRule {
+  hourlyRateCents: number;
+  minBilledMinutes: number;
+  maxOvertimeMinutes: number;
+}
+
+/**
+ * Gain d'une mission terminée, selon la règle de l'API : du début du suivi (ou du départ
+ * prévu) à la fin, plafonné au créneau réservé plus le dépassement admis. Partagé par l'API,
+ * le seed de démonstration et la mise à jour des installations existantes.
+ */
+export function missionEarning(
+  mission: { departureAt: Date; slotEndAt: Date; startedAt: Date | null; completedAt: Date },
+  rule: EarningRule,
+): { startedAt: Date; endedAt: Date; billedMinutes: number; amountCents: number; capped: boolean } {
+  const startedAt = mission.startedAt ?? mission.departureAt;
+  const slotMinutes = Math.ceil(
+    (mission.slotEndAt.getTime() - mission.departureAt.getTime()) / 60_000,
+  );
+  return {
+    startedAt,
+    endedAt: mission.completedAt,
+    ...guardEarning({
+      startedAt,
+      endedAt: mission.completedAt,
+      hourlyRateCents: rule.hourlyRateCents,
+      minBilledMinutes: rule.minBilledMinutes,
+      maxBilledMinutes: Math.max(0, slotMinutes) + rule.maxOvertimeMinutes,
+    }),
+  };
+}
+
 /** Longueur de l'IBAN par pays (registre ISO 13616). */
 // prettier-ignore
 export const IBAN_LENGTHS: Readonly<Record<string, number>> = {

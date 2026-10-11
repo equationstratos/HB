@@ -14,7 +14,8 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "bootstrap": "pnpm install && pnpm --filter @hb/api init:env && pnpm turbo run build --filter=@hb/shared --filter=@hb/api-client && pnpm --filter @hb/api db:migrate && pnpm --filter @hb/api seed"
+    "bootstrap": "pnpm install && pnpm --filter @hb/api init:env && pnpm turbo run build --filter=@hb/shared --filter=@hb/api-client && pnpm --filter @hb/api db:migrate && pnpm --filter @hb/api seed",
+    "update:server": "pnpm install && pnpm turbo run build --filter=@hb/shared --filter=@hb/api-client && pnpm --filter @hb/api run update:server"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
