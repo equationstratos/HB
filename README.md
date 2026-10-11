@@ -128,6 +128,20 @@ pnpm dev               # API (http://localhost:3000) + admin (http://localhost:5
 
 La documentation interactive de l'API est servie sur <http://localhost:3000/docs>.
 
+### Mettre à jour une installation existante
+
+Arrêtez le serveur (`Ctrl+C`), puis :
+
+```bash
+git pull
+pnpm install                    # nouvelles dépendances éventuelles
+pnpm --filter @hb/api db:migrate  # nouvelles tables (gains des gardes, virements…)
+pnpm --filter @hb/api seed      # facultatif : ajoute les gains de démo aux gardes de démonstration
+pnpm dev
+```
+
+Vos comptes, missions et réglages sont conservés. Pour des itinéraires qui suivent les rues, remplacez `ROUTING_PROVIDER=straight` par `ROUTING_PROVIDER=osrm` dans `apps/api/.env` (le PC doit avoir accès à internet). Réinstallez ensuite les applis depuis les liens en haut de cette page.
+
 ### Comptes de démonstration
 
 Mot de passe commun : `Demo-HB-2026!`
