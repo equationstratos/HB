@@ -28,6 +28,7 @@ import { RoutingModule } from './routing/routing.module';
 import { SosModule } from './sos/sos.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { UsersModule } from './users/users.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { UsersModule } from './users/users.module';
     ChatModule,
     CallsModule,
     RatingsModule,
+    WalletModule,
     AdminModule,
     WorkersModule,
   ],

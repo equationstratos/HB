@@ -2,11 +2,15 @@ import type {
   AdminAlertsDto,
   AdminGuardDto,
   AdminOverviewDto,
+  AdminPayoutDetailDto,
+  AdminPayoutDto,
   AdminUserDto,
   AuditLogDto,
   AuditQuery,
   AuthTokens,
   AvailabilityInput,
+  BankAccountDto,
+  BankAccountInput,
   CallResponseDto,
   ComputedRoute,
   CreateMissionInput,
@@ -17,6 +21,7 @@ import type {
   GuardDocumentType,
   GuardListQuery,
   GuardProfileDto,
+  GuardWalletDto,
   LiveMissionDto,
   LocationDto,
   LocationPingInput,
@@ -31,6 +36,8 @@ import type {
   MissionStatus,
   OfferDto,
   Paginated,
+  PayoutDto,
+  PayoutStatus,
   PhoneCodeSentDto,
   PlanDto,
   PlanInput,
@@ -192,6 +199,11 @@ export function createEndpoints(http: Http) {
         put<GuardProfileDto>('/guards/me/availability', input),
       setPresence: (input: PresenceInput) => post<GuardProfileDto>('/guards/me/presence', input),
       ratings: () => get<RatingDto[]>('/guards/me/ratings'),
+      wallet: () => get<GuardWalletDto>('/guards/me/wallet'),
+      setBankAccount: (input: BankAccountInput) =>
+        put<BankAccountDto>('/guards/me/bank-account', input),
+      /** Demande le virement de tout le solde disponible. */
+      requestPayout: () => post<PayoutDto>('/guards/me/payouts'),
     },
 
     admin: {
@@ -242,6 +254,14 @@ export function createEndpoints(http: Http) {
       lowRated: () => get<LowRatedGuardDto[]>('/admin/ratings/low'),
       audit: (query: Partial<AuditQuery> = {}) =>
         get<Paginated<AuditLogDto>>('/admin/audit', query),
+      payouts: (query: Page & { status?: PayoutStatus[] } = {}) =>
+        get<Paginated<AdminPayoutDto>>('/admin/payouts', query),
+      /** Détail avec l'IBAN complet (consultation tracée dans l'audit). */
+      payout: (id: string) => get<AdminPayoutDetailDto>(`/admin/payouts/${id}`),
+      markPayoutPaid: (id: string, bankReference?: string) =>
+        post<AdminPayoutDto>(`/admin/payouts/${id}/paid`, { bankReference }),
+      rejectPayout: (id: string, reason: string) =>
+        post<AdminPayoutDto>(`/admin/payouts/${id}/reject`, { reason }),
     },
   };
 }

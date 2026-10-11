@@ -6,6 +6,7 @@ import type {
   MissionStatus,
   MissionType,
   OfferStatus,
+  PayoutStatus,
   Role,
   TransportMode,
 } from './enums';
@@ -73,4 +74,10 @@ export const roleLabel: Record<Role, string> = {
   CLIENT: 'Cliente',
   GUARD: 'Garde',
   ADMIN: 'Admin',
+};
+
+export const payoutStatusLabel: Record<PayoutStatus, string> = {
+  REQUESTED: 'Demandé',
+  PAID: 'Payé',
+  REJECTED: 'Refusé',
 };

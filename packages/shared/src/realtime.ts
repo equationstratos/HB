@@ -1,10 +1,12 @@
 import type {
+  AdminPayoutDto,
   DeviationDto,
   LocationDto,
   MessageDto,
   MissionDto,
   MissionRouteDto,
   OfferDto,
+  PayoutDto,
   SosAlertDto,
 } from './types';
 
@@ -25,6 +27,10 @@ export interface ServerToClientEvents {
   'alert:deviation': (deviation: DeviationDto) => void;
   'alert:deviation-updated': (deviation: DeviationDto) => void;
   'guard:application': (payload: { userId: string }) => void;
+  /** Demande de virement d'un garde, à traiter par l'équipe. */
+  'payout:requested': (payout: AdminPayoutDto) => void;
+  /** Virement payé ou refusé par l'équipe, envoyé au garde concerné. */
+  'payout:updated': (payout: PayoutDto) => void;
 }
 
 /** Événements envoyés par les applis. */

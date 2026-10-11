@@ -6,6 +6,7 @@ import type {
   MissionStatus,
   MissionType,
   OfferStatus,
+  PayoutStatus,
   Role,
   SubscriptionStatus,
   TransportMode,
@@ -323,4 +324,64 @@ export interface MissionContactsDto {
   client: { name: string; phone: string };
   guard: { name: string; phone: string } | null;
   emergencyContacts: { name: string; phone: string; relation: string | null }[];
+}
+
+// ---------- Gains et virements des gardes ----------
+
+/** Gain d'une mission terminée. Jamais le nom ni la note de la cliente. */
+export interface GuardEarningDto {
+  id: string;
+  missionId: string;
+  /** Début du suivi (heure de départ prévue à défaut). */
+  startedAt: string;
+  endedAt: string;
+  /** Durée réelle, en minutes commencées. */
+  durationMinutes: number;
+  /** Durée rémunérée, minimum compris. */
+  billedMinutes: number;
+  hourlyRateCents: number;
+  amountCents: number;
+}
+
+export interface BankAccountDto {
+  holderName: string;
+  /** Seul l'IBAN masqué est renvoyé : « FR76 •••• •••• 1234 ». */
+  ibanMasked: string;
+  updatedAt: string;
+}
+
+export interface PayoutDto {
+  id: string;
+  amountCents: number;
+  status: PayoutStatus;
+  /** Compte de destination au moment de la demande. */
+  holderName: string;
+  ibanMasked: string;
+  requestedAt: string;
+  /** Date du virement ou du refus. */
+  processedAt: string | null;
+  bankReference: string | null;
+  rejectionReason: string | null;
+}
+
+export interface GuardWalletDto {
+  /** Gains moins les virements demandés ou payés. */
+  availableCents: number;
+  totalEarnedCents: number;
+  payoutMinCents: number;
+  hourlyRateCents: number;
+  minBilledMinutes: number;
+  bankAccount: BankAccountDto | null;
+  pendingPayout: PayoutDto | null;
+  earnings: GuardEarningDto[];
+  payouts: PayoutDto[];
+}
+
+export interface AdminPayoutDto extends PayoutDto {
+  guard: { id: string; firstName: string; lastName: string; email: string };
+}
+
+/** Détail d'un virement pour l'équipe : IBAN complet, consultation tracée. */
+export interface AdminPayoutDetailDto extends AdminPayoutDto {
+  iban: string;
 }

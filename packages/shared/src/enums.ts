@@ -105,3 +105,14 @@ export const SubscriptionStatus = {
   CANCELLED: 'CANCELLED',
 } as const;
 export type SubscriptionStatus = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
+
+export const PayoutStatus = {
+  /** Demandé par le garde, en attente du virement par l'équipe. */
+  REQUESTED: 'REQUESTED',
+  /** Virement effectué par l'équipe. */
+  PAID: 'PAID',
+  /** Refusé par l'équipe : le montant revient dans le solde du garde. */
+  REJECTED: 'REJECTED',
+} as const;
+export type PayoutStatus = (typeof PayoutStatus)[keyof typeof PayoutStatus];
+export const PAYOUT_STATUSES = values(PayoutStatus);

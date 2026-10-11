@@ -11,3 +11,4 @@ export * from './labels.fr';
 export * from './theme';
 export * from './utils';
 export * from './chat';
+export * from './wallet';

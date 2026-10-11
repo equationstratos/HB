@@ -1,4 +1,9 @@
-import { DEFAULT_MAP_ATTRIBUTION } from '@hb/shared';
+import {
+  DEFAULT_GUARD_HOURLY_RATE_CENTS,
+  DEFAULT_GUARD_MIN_BILLED_MINUTES,
+  DEFAULT_MAP_ATTRIBUTION,
+  DEFAULT_PAYOUT_MIN_CENTS,
+} from '@hb/shared';
 import { z } from 'zod';
 
 const bool = z
@@ -72,6 +77,17 @@ export const envSchema = z.object({
   MATCHING_MAX_RADIUS_KM: z.coerce.number().min(1).default(30),
 
   DEVIATION_ESCALATION_SECONDS: z.coerce.number().int().min(1).default(120),
+
+  /** Rémunération des gardes, en centimes par heure. */
+  GUARD_HOURLY_RATE_CENTS: z.coerce.number().int().min(1).default(DEFAULT_GUARD_HOURLY_RATE_CENTS),
+  /** Durée minimale rémunérée par mission, en minutes. */
+  GUARD_MIN_BILLED_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(DEFAULT_GUARD_MIN_BILLED_MINUTES),
+  /** Montant minimal d'une demande de virement, en centimes. */
+  PAYOUT_MIN_CENTS: z.coerce.number().int().min(1).default(DEFAULT_PAYOUT_MIN_CENTS),
 });
 
 export type Env = z.infer<typeof envSchema>;

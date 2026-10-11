@@ -1,10 +1,12 @@
 /**
  * Données de démonstration : 1 admin, 7 gardes (5 validés, 2 en attente), 2 clientes,
- * 3 formules, un historique de missions notées et une protection programmée.
+ * 3 formules, un historique de missions notées (et les gains des gardes) et une protection
+ * programmée.
  *
  *   pnpm --filter @hb/api seed
  *
- * Réservé au développement : refuse de tourner en production ou sur une base non vide.
+ * Réservé au développement : refuse de tourner en production. Sur une base non vide, seuls
+ * les gains manquants des gardes de démonstration sont ajoutés.
  */
 import { PrismaClient, Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -13,8 +15,11 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join, resolve } from 'path';
 import {
   CODE_WORDS,
+  DEFAULT_GUARD_HOURLY_RATE_CENTS,
+  DEFAULT_GUARD_MIN_BILLED_MINUTES,
   DEFAULT_TOLERANCE_METERS,
   expectedArrival,
+  guardEarning,
   slotEnd,
   straightLineRoute,
 } from '@hb/shared';
@@ -35,6 +40,45 @@ function encrypt(plain: string): string {
 
 const hash = (p: string) =>
   argon2.hash(p, { type: argon2.argon2id, memoryCost: 19_456, timeCost: 2, parallelism: 1 });
+
+/** Réglage numérique lu dans l'environnement (`apps/api/.env`), valeur par défaut de l'API sinon. */
+function envInt(name: string, fallback: number): number {
+  const value = Number(process.env[name] || fallback);
+  return Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+
+/**
+ * Gains des gardes de démonstration pour leurs missions terminées, avec la règle de l'API
+ * (taux horaire, minimum facturé). Idempotent : une mission déjà créditée est ignorée.
+ */
+async function seedEarnings(): Promise<number> {
+  const hourlyRateCents = envInt('GUARD_HOURLY_RATE_CENTS', DEFAULT_GUARD_HOURLY_RATE_CENTS);
+  const minBilledMinutes = envInt('GUARD_MIN_BILLED_MINUTES', DEFAULT_GUARD_MIN_BILLED_MINUTES);
+  const missions = await prisma.mission.findMany({
+    where: {
+      status: 'COMPLETED',
+      completedAt: { not: null },
+      earning: { is: null },
+      guard: { email: { endsWith: '@hb.local' }, guardProfile: { isNot: null } },
+    },
+  });
+  const { count } = await prisma.guardEarning.createMany({
+    data: missions.map((m) => {
+      const startedAt = m.startedAt ?? m.departureAt;
+      const endedAt = m.completedAt!;
+      return {
+        guardId: m.guardId!,
+        missionId: m.id,
+        startedAt,
+        endedAt,
+        hourlyRateCents,
+        ...guardEarning({ startedAt, endedAt, hourlyRateCents, minBilledMinutes }),
+      };
+    }),
+    skipDuplicates: true,
+  });
+  return count;
+}
 
 interface GuardSeed {
   firstName: string;
@@ -106,6 +150,10 @@ async function main() {
     console.log(
       'La base contient déjà des utilisateurs : seed ignoré (pnpm --filter @hb/api db:reset pour repartir de zéro).',
     );
+    // Base créée avant l'arrivée des gains : seuls les gains manquants sont ajoutés.
+    const credited = await seedEarnings();
+    if (credited > 0)
+      console.log(`Gains des gardes ajoutés pour ${credited} mission(s) terminée(s).`);
     return;
   }
 
@@ -349,6 +397,9 @@ async function main() {
       },
     });
   }
+  // Gains des gardes pour ces missions terminées.
+  await seedEarnings();
+
   // Moyennes des notes.
   for (const g of guards) {
     const agg = await prisma.rating.aggregate({
