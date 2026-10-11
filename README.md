@@ -134,13 +134,18 @@ Arrêtez le serveur (`Ctrl+C`), puis :
 
 ```bash
 git pull
-pnpm install                    # nouvelles dépendances éventuelles
-pnpm --filter @hb/api db:migrate  # nouvelles tables (gains des gardes, virements…)
-pnpm --filter @hb/api seed      # facultatif : ajoute les gains de démo aux gardes de démonstration
+pnpm run update:server
 pnpm dev
 ```
 
-Vos comptes, missions et réglages sont conservés. Pour des itinéraires qui suivent les rues, remplacez `ROUTING_PROVIDER=straight` par `ROUTING_PROVIDER=osrm` dans `apps/api/.env` (le PC doit avoir accès à internet). Réinstallez ensuite les applis depuis les liens en haut de cette page.
+`update:server` fait tout le nécessaire, sans rien perdre (comptes, missions, réglages) :
+
+- installe les dépendances et recompile le code partagé ;
+- applique les nouvelles tables à la base (gains des gardes, virements…) ;
+- complète `apps/api/.env` avec les nouveaux réglages et passe les itinéraires en `ROUTING_PROVIDER=osrm` (trajets qui suivent les rues ; l'ancien fichier est gardé en `.env.bak`) ;
+- crédite aux gardes les missions terminées avant l'arrivée de la cagnotte.
+
+Le PC doit avoir accès à internet (fond de carte, itinéraires). Réinstallez ensuite les applis depuis les liens en haut de cette page. Tant que le serveur n'est pas à jour, les applis l'indiquent par un encadré « Serveur à mettre à jour ».
 
 ### Comptes de démonstration
 
@@ -202,9 +207,11 @@ Les QR codes en haut de cette page mènent aux mêmes fichiers.
 - Pour intégrer directement l'adresse d'un serveur hébergé, renseignez la variable de dépôt `HB_API_URL` (Settings → Secrets and variables → Actions → Variables) puis relancez le workflow.
 - **iPhone** : pas d'APK possible. Une appli iOS installable demande un compte Apple Developer et une compilation EAS. En attendant, utilisez Expo Go (ci-dessous).
 
-### Notifications des messages
+### Notifications des messages et du statut de la protection
 
-Quand la cliente ou le garde écrit, l'autre personne est prévenue :
+**Statut de la protection** : la cliente et le garde sont prévenus à chaque étape (garde trouvé, en route, protection en cours, terminée, annulée), chacun avec son texte, sauf la personne qui vient de faire l'action. Les propositions de mission, alertes et virements suivent le même chemin. Toucher la notification ouvre la mission, l'accueil (proposition) ou les gains (virement). Sur l'écran verrouillé, le texte reste masqué (mot de code…).
+
+**Messages** : quand la cliente ou le garde écrit, l'autre personne est prévenue :
 
 - **appli ouverte**, quel que soit l'écran : notification dès l'arrivée du message, sauf si la conversation est déjà affichée ;
 - **appli en arrière-plan pendant une mission en cours** (garde en route ou protection en cours) : le suivi GPS garde l'appli active, et elle relève les nouveaux messages toutes les 15 s environ ;

@@ -11,7 +11,7 @@ import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { getClient } from '../session';
 import { useTheme } from '../theme';
-import { mapHtml, type MapState } from './map-html';
+import { DIRECT_TILE_URL, mapHtml, type MapState } from './map-html';
 
 /** Adresse de tuiles imposée à la compilation ; sinon, celles du serveur choisi dans l'appli. */
 const TILE_URL_OVERRIDE = process.env.EXPO_PUBLIC_TILE_URL || null;
@@ -90,7 +90,12 @@ export function RouteMap({
   // Seules des coordonnées, les couleurs du thème et le fond de carte sont transmis à la page.
   const state: MapState = useMemo(
     () => ({
-      tiles: { url: tileUrl, attribution, maxZoom: MAP_MAX_ZOOM },
+      tiles: {
+        url: tileUrl,
+        attribution,
+        maxZoom: MAP_MAX_ZOOM,
+        fallbackUrl: TILE_URL_OVERRIDE ? undefined : DIRECT_TILE_URL,
+      },
       line: (line ?? []).map(([lng, lat]) => [lng, lat] as [number, number]),
       waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
       client: point(client),

@@ -14,9 +14,15 @@ const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist';
 const LEAFLET_JS_SRI = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
 const LEAFLET_CSS_SRI = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
 
+/**
+ * Tuiles OpenStreetMap chargées directement par le téléphone : secours quand le serveur ne
+ * sert pas le fond de carte (version trop ancienne, ordinateur sans internet).
+ */
+export const DIRECT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
 export interface MapState {
   /** Fond de carte : son adresse dépend du serveur choisi dans l'appli. */
-  tiles: { url: string; attribution: string; maxZoom: number };
+  tiles: { url: string; attribution: string; maxZoom: number; fallbackUrl?: string };
   /** Tracé : [lng, lat][] (GeoJSON). */
   line: [number, number][];
   /** Départ, étapes, arrivée. */
@@ -46,6 +52,9 @@ export function mapHtml(): string {
   .leaflet-control-attribution { font-size: 9px; }
   .hb-offline { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font: 14px -apple-system, Roboto, sans-serif; color: #625d73; text-align: center; padding: 16px; }
+  .hb-tiles-notice { position: absolute; left: 8px; right: 8px; top: 8px; z-index: 1000; display: none;
+    background: rgba(255,255,255,.94); color: #625d73; font: 12px -apple-system, Roboto, sans-serif;
+    padding: 8px 10px; border-radius: 8px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
 </style>
 </head><body>
 <div id="map"></div>
@@ -74,13 +83,46 @@ export function mapHtml(): string {
     return div.innerHTML;
   }
 
+  var tilesNotice = null;
+  function notice(message) {
+    if (!tilesNotice) {
+      tilesNotice = document.createElement('div');
+      tilesNotice.className = 'hb-tiles-notice';
+      document.body.appendChild(tilesNotice);
+    }
+    tilesNotice.textContent = message;
+    tilesNotice.style.display = message ? 'block' : 'none';
+  }
+
+  // Fond de carte du serveur. S'il ne répond pas (serveur trop ancien, ordinateur sans
+  // internet), tuiles OpenStreetMap chargées directement, puis un message si rien ne s'affiche.
+  function showTiles(url, t, isFallback) {
+    if (tiles) map.removeLayer(tiles);
+    var loaded = false;
+    var errors = 0;
+    var current = L.tileLayer(url, { maxZoom: t.maxZoom, attribution: text(t.attribution) });
+    current.on('tileload', function () {
+      loaded = true;
+      notice('');
+    });
+    current.on('tileerror', function () {
+      if (loaded || current !== tiles) return;
+      errors += 1;
+      if (errors < 4) return;
+      if (!isFallback && t.fallbackUrl) showTiles(t.fallbackUrl, t, true);
+      else notice('Fond de carte indisponible : vérifiez que le serveur HB est à jour et que l’ordinateur a accès à internet.');
+    });
+    tiles = current;
+    current.addTo(map);
+  }
+
   // Couche recréée seulement si le serveur choisi dans l'appli (ou l'attribution) change.
   function setTiles(t) {
     var key = JSON.stringify(t);
     if (!t || key === tilesKey) return;
     tilesKey = key;
-    if (tiles) map.removeLayer(tiles);
-    tiles = L.tileLayer(t.url, { maxZoom: t.maxZoom, attribution: text(t.attribution) }).addTo(map);
+    notice('');
+    showTiles(t.url, t, false);
   }
 
   map.on('click', function (e) { send({ type: 'press', lat: e.latlng.lat, lng: e.latlng.lng }); });
