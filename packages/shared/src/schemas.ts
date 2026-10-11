@@ -146,7 +146,7 @@ export const messageSchema = z.object({
 });
 export type MessageInput = z.infer<typeof messageSchema>;
 
-/** `after` : seulement les messages postérieurs (relève périodique des applis). */
+/** `after` : seulement les messages à partir de cette date, incluse (relève des applis). */
 export const messageListQuerySchema = z.object({
   after: isoDateTime.optional(),
 });

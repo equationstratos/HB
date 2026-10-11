@@ -49,6 +49,8 @@ export function ensureNotificationChannels(): Promise<void> {
     await Notifications.setNotificationChannelAsync(MESSAGES_CHANNEL, {
       name: 'Messages',
       importance: Notifications.AndroidImportance.HIGH,
+      // Écran verrouillé : la notification apparaît, mais pas le texte du message.
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
       sound: 'default',
       vibrationPattern: [0, 250, 150, 250],
     });

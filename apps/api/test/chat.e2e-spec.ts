@@ -125,7 +125,7 @@ describe('Messagerie : notifications et relève des nouveaux messages', () => {
     expect(t.push.sent[0]?.body).toBe('L’équipe de supervision vous a écrit.');
   });
 
-  it('ne renvoie avec ?after= que les messages postérieurs', async () => {
+  it('ne renvoie avec ?after= que les messages à partir de cette date', async () => {
     const all = await t
       .http()
       .get(`/api/missions/${missionId}/messages`)
@@ -140,14 +140,22 @@ describe('Messagerie : notifications et relève des nouveaux messages', () => {
       .query({ after: history[0]!.createdAt })
       .set(guard.auth)
       .expect(200);
-    expect((after.body as MessageDto[]).map((m) => m.id)).toEqual(
-      history.slice(1).map((m) => m.id),
-    );
+    // Date incluse : un message de la même milliseconde que le repère n'est jamais perdu,
+    // l'appli écarte elle-même ceux qu'elle a déjà vus.
+    expect((after.body as MessageDto[]).map((m) => m.id)).toEqual(history.map((m) => m.id));
+
+    const last = await t
+      .http()
+      .get(`/api/missions/${missionId}/messages`)
+      .query({ after: history[2]!.createdAt })
+      .set(client.auth)
+      .expect(200);
+    expect((last.body as MessageDto[]).map((m) => m.id)).toEqual([history[2]!.id]);
 
     const none = await t
       .http()
       .get(`/api/missions/${missionId}/messages`)
-      .query({ after: history[2]!.createdAt })
+      .query({ after: new Date(Date.parse(history[2]!.createdAt) + 1).toISOString() })
       .set(client.auth)
       .expect(200);
     expect(none.body).toEqual([]);

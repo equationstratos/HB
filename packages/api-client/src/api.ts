@@ -152,7 +152,7 @@ export function createEndpoints(http: Http) {
       locations: (id: string) => get<LocationDto[]>(`/missions/${id}/locations`),
       sendLocations: (id: string, pings: LocationPingInput[]) =>
         post<{ accepted: number }>(`/missions/${id}/locations`, { pings }),
-      /** `after` (date ISO) : seulement les messages postérieurs. */
+      /** `after` (date ISO) : seulement les messages à partir de cette date, incluse. */
       messages: (id: string, after?: string) =>
         get<MessageDto[]>(`/missions/${id}/messages`, { after }),
       sendMessage: (id: string, body: string) =>

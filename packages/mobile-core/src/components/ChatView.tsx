@@ -83,11 +83,14 @@ export function ChatView({
   useEffect(() => {
     if (connected && !wasConnected.current) {
       api.missions.messages(missionId).then(
-        (loaded) =>
+        (loaded) => {
           setMessages((prev) => [
             ...loaded,
             ...prev.filter((p) => !loaded.some((l) => l.id === p.id)),
-          ]),
+          ]);
+          // Affichés dans la conversation ouverte : ils ne seront pas signalés ensuite.
+          void markMessagesSeen(missionId, loaded).catch(() => undefined);
+        },
         () => undefined,
       );
     }

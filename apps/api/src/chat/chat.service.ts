@@ -32,7 +32,10 @@ export class ChatService {
     private readonly audit: AuditService,
   ) {}
 
-  /** `after` : seulement les messages postérieurs à cette date (relève des applis). */
+  /**
+   * `after` : seulement les messages à partir de cette date, incluse (relève des applis, qui
+   * écartent ce qu'elles ont déjà vu : deux messages de la même milliseconde restent signalés).
+   */
   async list(
     user: AuthUser,
     missionId: string,
@@ -50,7 +53,7 @@ export class ChatService {
       });
     }
     const rows = await this.prisma.message.findMany({
-      where: { missionId, ...(after ? { createdAt: { gt: new Date(after) } } : {}) },
+      where: { missionId, ...(after ? { createdAt: { gte: new Date(after) } } : {}) },
       include: { sender: { select: { role: true } } },
       orderBy: { createdAt: 'asc' },
       take: 500,
