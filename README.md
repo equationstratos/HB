@@ -147,6 +147,8 @@ pnpm dev
 
 Le PC doit avoir accès à internet (fond de carte, itinéraires). Réinstallez ensuite les applis depuis les liens en haut de cette page. Tant que le serveur n'est pas à jour, les applis l'indiquent par un encadré « Serveur à mettre à jour ».
 
+**« Erreur 500 » à la connexion à l'admin** : l'API ne tourne pas (dans la fenêtre de `pnpm dev`, l'admin affiche `ECONNREFUSED 127.0.0.1:3000`). Cherchez plus haut la ligne `@hb/api:dev` qui explique pourquoi : base de données arrêtée (`docker compose up -d`), migrations manquantes (`pnpm run update:server`)…
+
 ### Comptes de démonstration
 
 Mot de passe commun : `Demo-HB-2026!`
