@@ -1,5 +1,7 @@
 import { TokenService } from '../src/auth/token.service';
 import { MfaService } from '../src/auth/mfa.service';
+import { CryptoService } from '../src/common/crypto.service';
+import { AppConfig } from '../src/config/app-config.service';
 import {
   PASSWORD,
   TestApp,
@@ -225,6 +227,30 @@ describe('AAA — authentification, autorisation, traçabilité', () => {
   });
 
   describe('double authentification des admins', () => {
+    it('signale une clé de chiffrement changée au lieu d’une erreur 500', async () => {
+      // Secret 2FA chiffré avec une autre clé : .env recréé sur une base existante.
+      const admin = await createAdmin(t, 'Claire');
+      const other = new CryptoService({
+        get: () => Buffer.alloc(32, 9).toString('base64'),
+      } as unknown as AppConfig);
+      await t.prisma.user.update({
+        where: { email: admin.email },
+        data: { totpSecret: other.encrypt(admin.secret) },
+      });
+      const step1 = await t
+        .http()
+        .post('/api/auth/login')
+        .send({ email: admin.email, password: PASSWORD })
+        .expect(200);
+      const res = await t
+        .http()
+        .post('/api/auth/mfa/verify')
+        .send({ mfaToken: step1.body.mfaToken, code: MfaService.generate(admin.secret) })
+        .expect(503);
+      expect(res.body.message).toMatch(/Clé de chiffrement du serveur changée/);
+      expect(t.app.get(CryptoService).canDecrypt(other.encrypt('x'))).toBe(false);
+    });
+
     it('ne délivre aucun jeton admin sans code TOTP, et refuse le rejeu d’un code', async () => {
       const admin = await createAdmin(t, 'Sophie');
       const step1 = await t

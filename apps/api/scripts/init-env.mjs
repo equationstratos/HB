@@ -1,14 +1,53 @@
 // Crée apps/api/.env à partir de .env.example avec des secrets aléatoires.
+//
+// Les secrets (JWT_ACCESS_SECRET, DATA_ENCRYPTION_KEY) sont aussi gardés hors du projet, dans
+// ~/.hb/api-secrets.env (ou HB_SECRETS_FILE) : une nouvelle installation sur le même ordinateur
+// (nouveau téléchargement, autre dossier) les reprend, et peut donc relire les données déjà
+// chiffrées dans la base (double authentification des admins, IBAN des gardes).
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const target = join(root, '.env');
+const SECRET_KEYS = ['JWT_ACCESS_SECRET', 'DATA_ENCRYPTION_KEY'];
+const secretsFile = process.env.HB_SECRETS_FILE || join(homedir(), '.hb', 'api-secrets.env');
+
+/** Valeurs des clés secrètes d'un fichier .env (hors valeurs d'exemple). */
+function readSecrets(file) {
+  if (!existsSync(file)) return {};
+  const secrets = {};
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const match = /^([A-Z_]+)=(.*)$/.exec(line.trim());
+    if (match && SECRET_KEYS.includes(match[1]) && !/change-me|REPLACE_WITH/.test(match[2])) {
+      secrets[match[1]] = match[2];
+    }
+  }
+  return secrets;
+}
+
+/** Garde les secrets de ce .env pour les prochaines installations, s'ils ne le sont pas déjà. */
+function saveSecrets(secrets) {
+  if (existsSync(secretsFile) || SECRET_KEYS.some((key) => !secrets[key])) return;
+  try {
+    mkdirSync(dirname(secretsFile), { recursive: true, mode: 0o700 });
+    writeFileSync(
+      secretsFile,
+      `# Secrets de l'API HB, repris par les nouvelles installations sur cet ordinateur.\n${SECRET_KEYS.map((key) => `${key}=${secrets[key]}`).join('\n')}\n`,
+      { mode: 0o600 },
+    );
+    console.log(`Secrets de l’API gardés dans ${secretsFile} pour les prochaines installations.`);
+  } catch (error) {
+    console.log(`Impossible d’écrire ${secretsFile} : ${error.message}`);
+  }
+}
+
 // --upgrade : met à jour un .env existant (pnpm run update:server).
 const upgrade = process.argv.includes('--upgrade');
 if (existsSync(target)) {
+  saveSecrets(readSecrets(target));
   if (!upgrade) {
     console.log('apps/api/.env existe déjà : rien à faire.');
     // Les anciennes versions traçaient les trajets en lignes droites par défaut.
@@ -64,11 +103,19 @@ function upgradeEnv() {
   writeFileSync(target, env, { mode: 0o600 });
   console.log(`apps/api/.env mis à jour (copie de l’ancien : .env.bak) : ${changes.join(', ')}.`);
 }
+// Nouvelle installation : secrets d'une installation précédente sur cet ordinateur, sinon neufs.
+const previous = readSecrets(secretsFile);
+const secrets = {
+  JWT_ACCESS_SECRET: previous.JWT_ACCESS_SECRET ?? randomBytes(48).toString('hex'),
+  DATA_ENCRYPTION_KEY: previous.DATA_ENCRYPTION_KEY ?? randomBytes(32).toString('base64'),
+};
 const env = readFileSync(join(root, '.env.example'), 'utf8')
-  .replace(/^JWT_ACCESS_SECRET=.*$/m, `JWT_ACCESS_SECRET=${randomBytes(48).toString('hex')}`)
-  .replace(
-    /^DATA_ENCRYPTION_KEY=.*$/m,
-    `DATA_ENCRYPTION_KEY=${randomBytes(32).toString('base64')}`,
-  );
+  .replace(/^JWT_ACCESS_SECRET=.*$/m, `JWT_ACCESS_SECRET=${secrets.JWT_ACCESS_SECRET}`)
+  .replace(/^DATA_ENCRYPTION_KEY=.*$/m, `DATA_ENCRYPTION_KEY=${secrets.DATA_ENCRYPTION_KEY}`);
 writeFileSync(target, env, { mode: 0o600 });
-console.log('apps/api/.env créé avec des secrets aléatoires.');
+if (previous.DATA_ENCRYPTION_KEY) {
+  console.log(`apps/api/.env créé avec les secrets de l’installation précédente (${secretsFile}).`);
+} else {
+  console.log('apps/api/.env créé avec des secrets aléatoires.');
+  saveSecrets(secrets);
+}

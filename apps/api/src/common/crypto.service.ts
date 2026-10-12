@@ -9,6 +9,20 @@ import {
 } from 'crypto';
 import { AppConfig } from '../config/app-config.service';
 
+/**
+ * Donnée chiffrée avec une autre clé que DATA_ENCRYPTION_KEY : en pratique, un nouveau
+ * apps/api/.env (nouvelle installation, nouveau téléchargement) sur une base existante.
+ */
+export class EncryptionKeyMismatchError extends Error {
+  constructor() {
+    super(
+      'Donnée chiffrée illisible avec DATA_ENCRYPTION_KEY : la clé de apps/api/.env a changé ' +
+        'depuis son enregistrement (voir README, section « Dépannage »).',
+    );
+    this.name = 'EncryptionKeyMismatchError';
+  }
+}
+
 /** Chiffrement des secrets au repos et génération d'aléas sûrs. */
 @Injectable()
 export class CryptoService {
@@ -32,7 +46,22 @@ export class CryptoService {
     if (!iv || !tag || !data) throw new Error('Donnée chiffrée invalide');
     const decipher = createDecipheriv('aes-256-gcm', this.key, iv);
     decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+    try {
+      return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+    } catch {
+      // Étiquette d'authentification refusée : la donnée a été chiffrée avec une autre clé.
+      throw new EncryptionKeyMismatchError();
+    }
+  }
+
+  /** Vrai si la donnée se déchiffre avec la clé actuelle. */
+  canDecrypt(payload: string): boolean {
+    try {
+      this.decrypt(payload);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   sha256(value: string): string {

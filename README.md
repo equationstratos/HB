@@ -149,6 +149,13 @@ Le PC doit avoir accès à internet (fond de carte, itinéraires). Réinstallez 
 
 **« Erreur 500 » à la connexion à l'admin** : l'API ne tourne pas (dans la fenêtre de `pnpm dev`, l'admin affiche `ECONNREFUSED 127.0.0.1:3000`). Cherchez plus haut la ligne `@hb/api:dev` qui explique pourquoi : base de données arrêtée (`docker compose up -d`), migrations manquantes (`pnpm run update:server`)…
 
+**« Clé de chiffrement du serveur changée » (ou `Unsupported state or unable to authenticate data`)** : `apps/api/.env` a été recréé, par exemple dans un nouveau dossier après un nouveau téléchargement, alors que la base de données est restée la même. Les données chiffrées avec l'ancienne clé (double authentification des admins, IBAN des gardes) ne se relisent plus. Au démarrage, l'API l'indique dans sa console. Deux solutions :
+
+1. Reprendre la ligne `DATA_ENCRYPTION_KEY=…` dans le `apps/api/.env` de l'installation précédente, puis relancer `pnpm dev` ;
+2. ou réinitialiser la double authentification : `pnpm --filter @hb/api run admin:reset-mfa admin@hb.local`, puis se reconnecter et scanner le nouveau QR code dans l'application d'authentification (les gardes ressaisiront leur IBAN si besoin).
+
+Pour éviter que cela se reproduise, les secrets de l'API sont désormais gardés dans `~/.hb/api-secrets.env` et repris par toute nouvelle installation sur le même ordinateur. Pour mettre à jour, le plus simple reste de cloner le dépôt une fois (`git clone https://github.com/equationstratos/HB.git`) puis de faire `git pull` à chaque nouvelle version, au lieu de retélécharger le ZIP.
+
 ### Comptes de démonstration
 
 Mot de passe commun : `Demo-HB-2026!`

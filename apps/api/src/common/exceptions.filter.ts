@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
+import { EncryptionKeyMismatchError } from './crypto.service';
 
 /** Format d'erreur homogène, sans fuite de détails internes. */
 @Catch()
@@ -43,6 +44,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
           .json({ statusCode: 404, message: 'Ressource introuvable' });
         return;
       }
+    }
+
+    if (exception instanceof EncryptionKeyMismatchError) {
+      // Erreur de configuration du serveur, pas un bug : on dit quoi faire, sans pile d'appels.
+      this.logger.error(exception.message);
+      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        statusCode: 503,
+        message:
+          process.env.NODE_ENV === 'production'
+            ? 'Service momentanément indisponible'
+            : 'Clé de chiffrement du serveur changée : voir la console de l’API et le README (Dépannage).',
+      });
+      return;
     }
 
     this.logger.error(exception instanceof Error ? exception.stack : String(exception));
