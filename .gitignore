@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.expo/
+.env
+.env.local
+*.log
+.DS_Store
+apps/api/uploads/
+apps/*/android/
+apps/*/ios/
+*.tsbuildinfo
+web-build/
+expo-env.d.ts
+
+# Sauvegardes Redis locales
+*.rdb

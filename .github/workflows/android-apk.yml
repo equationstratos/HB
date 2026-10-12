@@ -1,0 +1,106 @@
+name: Applis Android (APK de test)
+
+# Compile les applis cliente et garde en APK installables, puis les publie dans la
+# version « apps-test » du dépôt (page Releases), téléchargeable depuis un téléphone.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'apps/client/**'
+      - 'apps/guard/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/android-apk.yml'
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: APK ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [client, guard]
+    env:
+      # Facultatif : adresse de l'API intégrée à l'appli (variable de dépôt HB_API_URL).
+      # Sans elle, l'adresse se règle dans l'appli (écran « Serveur »).
+      EXPO_PUBLIC_API_URL: ${{ vars.HB_API_URL }}
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Installation
+        run: pnpm install --frozen-lockfile
+
+      - name: Build des paquets partagés
+        run: pnpm turbo run build --filter=@hb/shared --filter=@hb/api-client
+
+      - name: Génération du projet Android
+        working-directory: apps/${{ matrix.app }}
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Compilation
+        working-directory: apps/${{ matrix.app }}/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Préparation de l'APK
+        run: |
+          mkdir -p out
+          cp apps/${{ matrix.app }}/android/app/build/outputs/apk/release/app-release.apk out/hb-${{ matrix.app }}.apk
+          ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hb-${{ matrix.app }}
+          path: out/hb-${{ matrix.app }}.apk
+          retention-days: 30
+
+  publish:
+    name: Publication
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Version « apps-test »
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<NOTES
+          Applis de test compilées depuis \`${GITHUB_REF_NAME}\` (commit ${GITHUB_SHA::7}).
+
+          - **hb-client.apk** : appli cliente
+          - **hb-guard.apk** : appli garde
+
+          Installation : ouvrez le fichier sur le téléphone Android et autorisez l'installation
+          depuis cette source. Au premier lancement, touchez « Serveur » en bas de l'écran
+          d'accueil pour indiquer l'adresse de l'API (voir le README, section « Applis de test »).
+          NOTES
+          gh release delete apps-test --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create apps-test out/*.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --latest --title "Applis de test (Android)" --notes-file notes.md
